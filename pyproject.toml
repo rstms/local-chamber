@@ -1,0 +1,56 @@
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+requires_python = ">=3.8"
+
+
+
+[project]
+name = "local_chamber"
+authors = [{name = "Matt Krueger", email = "mkrueger@rstms.net"}]
+readme = {file = "README.md", content-type = "text/markdown"}
+license = {file = "LICENSE"}
+keywords = ["local_chamber"]
+classifiers = [
+  "Intended Audience :: Developers",
+  "Natural Language :: English", 
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10"
+]
+dynamic = ["version", "description"] 
+
+dependencies = [
+  "click == 8.0.3",
+  "pyyaml == 6.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "black==21.11b1",
+  "bump2version==1.0.1",
+  "coverage==6.2",
+  "flake8==4.0.1",
+  "pytest==6.2.5",
+  "pytest-datadir==1.3.1",
+  "tox==3.24.4"
+]
+docs = [
+  "sphinx==4.3.2",
+  "sphinx-click==3.0.2"
+]
+
+[project.urls]
+Home = "https://github.com/rstms/local_chamber"
+[tool.black]
+line-length = 79
+
+[tool.isort]
+profile = "black"
+[tool.pytest]
+collect_ignore = ['setup.py']
+
+
+[project.scripts]
+local_chamber = "local_chamber.cli:cli"
