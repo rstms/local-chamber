@@ -1,6 +1,4 @@
-=============
-local-chamber
-=============
+# local-chamber
 
 
 ![Image](https://img.shields.io/github/license/rstms/local_chamber)
@@ -14,7 +12,7 @@ local-chamber
 
 ![Image](https://pyup.io/repos/github/rstms/local_chamber/shield.svg)
 
-Local Backend for segmentio/chamber simulating AWS SSM ParameterStore
+Local Backend for https://github.com/segmentio/chamber simulating AWS SSM ParameterStore
 
 
 * Free software: MIT license
