@@ -85,7 +85,7 @@ class LocalChamber:
         return 0
 
     def env(self, service):
-        """Print the secrets from the secrets directory in a format to export as environment variables"""
+        """Print the secrets from the secrets directory in a format to export as environment variables"""  # noqa
         secrets = self._secrets(service.lower())
         self.echo("\n".join([_export(k, v) for k, v in secrets.items()]))
         return 0
@@ -94,7 +94,7 @@ class LocalChamber:
         """Executes a command with secrets loaded into the environment"""
         if not cmd:
             raise LocalChamberError(
-                "Error: must specify command to run. See usage: requires at least 1 arg(s), only received 0"
+                "Error: must specify command to run. See usage: requires at least 1 arg(s), only received 0"  # noqa
             )
         env = dict(environ).copy()
         if strict_value:
@@ -112,11 +112,11 @@ class LocalChamber:
             for k, v in secrets.items():
                 env[k.upper()] = str(v)
 
-        # if we have any strict_vars; raise exception if they have not been overwritten
+        # if we have any strict_vars; raise exception if they have not been overwritten  # noqa
         for svar in strict_vars:
             if (svar not in env) or (env[svar] == strict_value):
                 raise LocalChamberError(
-                    f"parent env was expecting {svar}={strict_value}, but was not in store"
+                    f"parent env was expecting {svar}={strict_value}, but was not in store"  # noqa
                 )
 
         if EXEC_WAIT:
@@ -195,7 +195,6 @@ class LocalChamber:
 
     def _import(self, service, input_file):
         "import secrets from json or yaml"
-        secrets_dir = self._secrets_dir(service.lower())
         secrets = json.load(input_file)
         for key, value in secrets.items():
             self.write(service, key, value)

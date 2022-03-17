@@ -77,7 +77,7 @@ def delete(ctx, service, key):
 @click.argument("service", type=str, required=True)
 @click.pass_context
 def env(ctx, service):
-    """Print the secrets from the secrets directory in a format to export as environment variables"""
+    """Print the secrets from the secrets directory in a format to export as environment variables"""  # noqa
     ctx.exit(ctx.obj.env(service))
 
 
@@ -90,7 +90,7 @@ def env(ctx, service):
 @click.option(
     "--strict",
     is_flag=True,
-    help="ensure any env variables variables passed with <strict_value> are overwritten with service values",
+    help="ensure any env variables variables passed with <strict_value> are overwritten with service values",  # noqa
 )
 @click.option(
     "--strict_value",
@@ -105,11 +105,11 @@ def exec(ctx, pristine, strict, strict_value, service):
     args = sys.argv.copy()
     if args[1] != "exec":
         raise LocalChamberError("malformed exec command line")
-    if not "--" in args:
+    if "--" not in args:
         raise LocalChamberError("exec requires '--' argument separator")
     knife = args.index("--")
     services = args[2:knife]
-    cmd = args[knife + 1 :]
+    cmd = args[knife + 1 :]  # noqa
     if not cmd:
         raise LocalChamberError("exec requires command list after '--'")
     if "--pristine" in services:

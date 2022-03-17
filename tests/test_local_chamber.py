@@ -4,14 +4,12 @@
 
 import json
 import sys
-from os import P_WAIT, environ, spawnvpe
 from pprint import pprint
 from subprocess import check_output, run
 
 import pytest
-import pytest_datadir
 import yaml
-from yaml import Dumper, Loader
+from yaml import Loader
 
 from local_chamber import LocalChamber, LocalChamberError
 
@@ -144,7 +142,7 @@ def test_chamber_delete_exists(chamber, find, lines, capsys):
 
 def test_chamber_delete_notfound(chamber, find, lines, capsys):
     with pytest.raises(LocalChamberError) as exc_info:
-        ret = chamber.delete("testservice", "sir_not_appearing_in_this_film")
+        chamber.delete("testservice", "sir_not_appearing_in_this_film")
     assert exc_info
     assert exc_info.type == LocalChamberError
     assert exc_info.value.args[0] == "Error: secret not found"
