@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 
-import click
 import sys
 from pathlib import Path
 
-from .local_chamber import LocalChamber
+import click
+
+from .local_chamber import LocalChamber, LocalChamberError
 
 FORMATS = ["json", "yaml", "csv", "tsv", "dotenv", "tfvars"]
 
@@ -36,7 +37,6 @@ FORMATS = ["json", "yaml", "csv", "tsv", "dotenv", "tfvars"]
 @click.pass_context
 def cli(ctx, secrets_dir, debug):
 
-    breakpoint()
     ctx.obj = LocalChamber(
         secrets_dir=secrets_dir, debug=debug, echo=click.echo
     )
@@ -54,8 +54,12 @@ def cli(ctx, secrets_dir, debug):
                 traceback,
             )
         else:
-            click.echo(f"{exception_type.__name__}: {exception}", err=True)
-            click.Abort
+            if exception_type is LocalChamberError:
+                fail = exception.args[0]
+            else:
+                fail = f"{exception_type.__name__}: {exception}"
+            click.echo(fail, err=True)
+            sys.exit(1)
 
     sys.excepthook = exception_handler
 
@@ -66,7 +70,7 @@ def cli(ctx, secrets_dir, debug):
 @click.pass_context
 def delete(ctx, service, key):
     """Delete a secret, including all versions"""
-    return ctx.obj.delete(service, key)
+    ctx.exit(ctx.obj.delete(service, key))
 
 
 @cli.command()
@@ -74,17 +78,63 @@ def delete(ctx, service, key):
 @click.pass_context
 def env(ctx, service):
     """Print the secrets from the secrets directory in a format to export as environment variables"""
-    return ctx.obj.env(service)
+    ctx.exit(ctx.obj.env(service))
 
 
 @cli.command(
     context_settings=dict(ignore_unknown_options=True, allow_extra_args=True)
 )
+@click.option(
+    "--pristine", is_flag=True, help="do not inherit parent environment"
+)
+@click.option(
+    "--strict",
+    is_flag=True,
+    help="ensure any env variables variables passed with <strict_value> are overwritten with service values",
+)
+@click.option(
+    "--strict_value",
+    type=str,
+    default="chamberme",
+    help="override the default strict_value",
+)
 @click.argument("service", type=str, required=True)
 @click.pass_context
-def exec(ctx, service):
+def exec(ctx, pristine, strict, strict_value, service):
     """Executes a command with secrets loaded into the environment"""
-    return ctx.obj.exec(service, **ctx.args)
+    args = sys.argv.copy()
+    if args[1] != "exec":
+        raise LocalChamberError("malformed exec command line")
+    if not "--" in args:
+        raise LocalChamberError("exec requires '--' argument separator")
+    knife = args.index("--")
+    services = args[2:knife]
+    cmd = args[knife + 1 :]
+    if not cmd:
+        raise LocalChamberError("exec requires command list after '--'")
+    if "--pristine" in services:
+        pristine = True
+        services.remove("--pristine")
+    if "--strict" in services:
+        strict = True
+        services.remove("--strict")
+    if "--strict_value" in services:
+        i = services.index("--strict_value")
+        services.pop(i)
+        strict_value = services.pop(i)
+
+    # pass strict_value as flag for strict mode as well as value to use
+    if not strict:
+        strict_value = None
+
+    ctx.exit(
+        ctx.obj._exec(
+            pristine=pristine,
+            strict_value=strict_value,
+            services=services,
+            cmd=cmd,
+        )
+    )
 
 
 @cli.command()
@@ -96,7 +146,7 @@ def exec(ctx, service):
 @click.pass_context
 def export(ctx, output_file, fmt, service):
     """Exports parameters in the specified format"""
-    return ctx.obj.export(output_file, fmt, service)
+    ctx.exit(ctx.obj.export(output_file, fmt, service))
 
 
 @cli.command()
@@ -105,7 +155,7 @@ def export(ctx, output_file, fmt, service):
 @click.pass_context
 def find(ctx, key, by_value):
     """Find the given secret across all services"""
-    return ctx.obj.find(key, by_value)
+    ctx.exit(ctx.obj.find(key, by_value))
 
 
 @cli.command("import")
@@ -114,8 +164,7 @@ def find(ctx, key, by_value):
 @click.pass_context
 def _import(ctx, service, input_file):
     "import secrets from json or yaml"
-    breakpoint()
-    return ctx.obj._import(service, input_file)
+    ctx.exit(ctx.obj._import(service, input_file))
 
 
 @cli.command()
@@ -123,14 +172,15 @@ def _import(ctx, service, input_file):
 @click.pass_context
 def list(ctx, service):
     """List the secrets set for a service"""
-    return ctx.obj.list(service)
+    ctx.exit(ctx.obj.list(service))
 
 
 @cli.command()
+@click.argument("service", type=str, default=None, required=False)
 @click.pass_context
-def list_services(ctx):
+def list_services(ctx, service):
     """List services"""
-    return ctx.obj.list_services()
+    ctx.exit(ctx.obj.list_services(service))
 
 
 @cli.command()
@@ -139,7 +189,7 @@ def list_services(ctx):
 @click.pass_context
 def read(ctx, service, key):
     """Read a specific secret from the parameter store"""
-    return ctx.obj.read(service, key)
+    ctx.exit(ctx.obj.read(service, key))
 
 
 @cli.command()
@@ -149,8 +199,4 @@ def read(ctx, service, key):
 @click.pass_context
 def write(ctx, service, key, value):
     """write a secret"""
-    return ctx.obj.write(service, key, value)
-
-
-if __name__ == "__main__":
-    sys.exit(cli())
+    ctx.exit(ctx.obj.write(service, key, value))

@@ -3,15 +3,21 @@
 import json
 import sys
 from datetime import datetime
-from os import environ, execvp
+from os import P_WAIT, environ, execvpe, spawnvpe
 from pathlib import Path
 from subprocess import check_output
 
 import yaml
 
+EXEC_WAIT = True
 
-def _quote(value, delims=[" "]):
-    q = '"' if any(d in value for d in delims) else ""
+
+class LocalChamberError(Exception):
+    pass
+
+
+def _quote(value, delims=[" "], quote_char="'"):
+    q = quote_char if any(d in value for d in delims) else ""
     return f"{q}{value}{q}"
 
 
@@ -37,11 +43,6 @@ def listdirs(dirs, curdir):
     return dirs
 
 
-def _exec(cmd):
-    if execvp(cmd[0], cmd):
-        raise RuntimeError("subprocess failed")
-
-
 def _stats(secret):
     stat = secret.stat()
     mtime = datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
@@ -51,7 +52,7 @@ def _stats(secret):
 
 class LocalChamber:
     def __init__(self, *, secrets_dir, debug, echo):
-        self.secrets_dir = secrets_dir
+        self.secrets_dir = Path(secrets_dir)
         self.echo = echo
 
     def _echo(self, msg):
@@ -73,61 +74,108 @@ class LocalChamber:
         return ret
 
     def _service_name(self, service):
-        return str(service.relative_to(self.secrets_dir))
+        return str(service.relative_to(self.secrets_dir)).lower()
 
     def delete(self, service, key):
         """Delete a secret, including all versions"""
         try:
-            (self.secrets_dir / key).unlink()
-        except Exception as ex:
-            breakpoint()
-            pass
-
+            (self.secrets_dir / service.lower() / key.lower()).unlink()
+        except FileNotFoundError as ex:
+            raise LocalChamberError("Error: secret not found") from ex
+        return 0
 
     def env(self, service):
         """Print the secrets from the secrets directory in a format to export as environment variables"""
-        secrets = self._secrets(service)
+        secrets = self._secrets(service.lower())
         self.echo("\n".join([_export(k, v) for k, v in secrets.items()]))
+        return 0
 
-    def exec(self, service):
+    def _exec(self, *, pristine, strict_value, services, cmd):
         """Executes a command with secrets loaded into the environment"""
-        secrets = self._secrets(service)
-        for k, v in secrets.items():
-            environ[k] = v
-        _exec(ctx.args)
+        if not cmd:
+            raise LocalChamberError(
+                "Error: must specify command to run. See usage: requires at least 1 arg(s), only received 0"
+            )
+        env = dict(environ).copy()
+        if strict_value:
+            # strict_vars must be filled from services or raise error
+            strict_vars = [k for k, v in env.items() if v == strict_value]
+        else:
+            strict_vars = []
+
+        if pristine:
+            # do not inherit environment
+            env = {}
+
+        for service in services:
+            secrets = self._secrets(service.lower())
+            for k, v in secrets.items():
+                env[k.upper()] = str(v)
+
+        # if we have any strict_vars; raise exception if they have not been overwritten
+        for svar in strict_vars:
+            if (svar not in env) or (env[svar] == strict_value):
+                raise LocalChamberError(
+                    f"parent env was expecting {svar}={strict_value}, but was not in store"
+                )
+
+        if EXEC_WAIT:
+            return spawnvpe(P_WAIT, cmd[0], cmd, env)
+        else:
+            execvpe(cmd[0], cmd, env)
 
     def export(self, output_file, fmt, service):
         """Exports parameters in the specified format"""
-        secrets = self._secrets(service)
+        secrets = self._secrets(service.lower())
         if fmt == "json":
-            out = json.dumps(secrets, sort_keys=True)
+            out = (
+                json.dumps(secrets, separators=[",", ":"], sort_keys=True)
+                + "\n"
+            )
         elif fmt == "yaml":
-            out = yaml.dump(secrets)
+            sorted_secrets = {k: v for k, v in sorted_items(secrets)}
+            out = yaml.dump(sorted_secrets)
         elif fmt == "csv":
-            out = "\n".join(
-                [
-                    f"{k},{_quote(v,[' ',','])}"
-                    for k, v in sorted_items(secrets)
-                ]
+            out = (
+                "\n".join(
+                    [
+                        f"{k},{_quote(v,[','])}"
+                        for k, v in sorted_items(secrets)
+                    ]
+                )
+                + "\n"
             )
         elif fmt == "tsv":
-            out = "\n".join(
-                [f"{k}\t{_quote(v)}" for k, v in sorted_items(secrets)]
+            tab = "\t"
+            out = (
+                "\n".join(
+                    [
+                        f"{k}\t{_quote(v,[tab])}"
+                        for k, v in sorted_items(secrets)
+                    ]
+                )
+                + "\n"
             )
         elif fmt == "dotenv":
-            out = "\n".join(
-                [f'{k.upper()}="{v}"' for k, v in sorted_items(secrets)]
+            out = (
+                "\n".join(
+                    [f'{k.upper()}="{v}"' for k, v in sorted_items(secrets)]
+                )
+                + "\n"
             )
-        elif fmt == 'tfvars':
-            out = "\n".join(
-                [f'{k} = "{v}"' for k, v in sorted_items(secrets)]
+        elif fmt == "tfvars":
+            out = (
+                "\n".join([f'{k} = "{v}"' for k, v in sorted_items(secrets)])
+                + "\n"
             )
         else:
             raise RuntimeError(f"unknown format: {fmt}")
         output_file.write(out)
+        return 0
 
     def find(self, key, by_value):
         """Find the given secret across all services"""
+        key = key.lower()
         if by_value:
             self.echo("Service\tKey")
         else:
@@ -143,16 +191,19 @@ class LocalChamber:
                         )
                 elif secret.name == key:
                     self.echo(self._service_name(service))
+        return 0
 
     def _import(self, service, input_file):
         "import secrets from json or yaml"
-        secrets_dir = self._secrets_dir(service)
+        secrets_dir = self._secrets_dir(service.lower())
         secrets = json.load(input_file)
         for key, value in secrets.items():
             self.write(service, key, value)
+        return 0
 
     def list(self, service):
         """List the secrets set for a service"""
+        service = service.lower()
         secrets = {}
         for secret in [
             s for s in self._secrets_dir(service).iterdir() if s.is_file()
@@ -166,27 +217,40 @@ class LocalChamber:
         for name in sorted(secrets.keys()):
             ltab = "\t" * (tabs - int(len(name) / 8))
             self.echo(f"{name}{ltab}1\t\t{mtime}\t{owner}")
+        return 0
 
-    def list_services(self):
+    def list_services(self, service_filter=None):
         """List services"""
+        self.echo("Service")
         services = listdirs(None, self.secrets_dir)
         for service in sorted(services):
-            self.echo(str(service.relative_to(self.secrets_dir)))
+            service_name = self._service_name(service)
+            if service_filter is None or service_name.startswith(
+                str(service_filter).lower()
+            ):
+                self.echo(service_name)
+        return 0
 
     def read(self, service, key):
         """Read a specific secret from the parameter store"""
         secret = self._secrets_dir(service) / key
+        try:
+            mtime, owner = _stats(secret)
+            out = f"{secret.name}\t{secret.read_text()}\t1\t{mtime}\t{owner}"
+        except FileNotFoundError as ex:
+            raise LocalChamberError(
+                "Error: Failed to read: secret not found"
+            ) from ex
         self.echo("Key\tValue\tVersion\tLastModified\tUser")
-        mtime, owner = _stats(secret)
-        self.echo(f"{secret.name}\t{secret.read_text()}\t1\t{mtime}\t{owner}")
+        self.echo(out)
+
+        return 0
 
     def write(self, service, key, value):
         """write a secret"""
         if value == "-":
             value = sys.stdin.read()
-        secret = self.secrets_dir / service / key
+        secret = self.secrets_dir / service.lower() / key.lower()
         secret.parent.mkdir(parents=True, exist_ok=True)
         secret.write_text(value)
-
-    if __name__ == "__main__":
-        sys.exit(cli())
+        return 0

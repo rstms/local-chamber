@@ -1,5 +1,5 @@
-commastr	this,that,other
-foo	moo
-key	value
-version	33.43
-words	this and that
+dynakey	foo
+fookey	foo
+key1	value1
+key_multiword	this and that
+testkey	howdy

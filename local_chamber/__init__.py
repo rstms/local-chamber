@@ -1,6 +1,7 @@
 """Top-level package for local-chamber."""
 
 from .cli import cli
-from .version import __author__, __email__, __timestamp__, __version__
+from .local_chamber import LocalChamber, LocalChamberError
+from .version import __version__
 
-__all__ = ["cli", __version__, __timestamp__, __author__, __email__]
+__all__ = ["cli", "LocalChamber", "LocalChamberError", __version__]

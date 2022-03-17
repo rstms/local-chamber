@@ -53,4 +53,4 @@ collect_ignore = ['setup.py']
 
 
 [project.scripts]
-local_chamber = "local_chamber.cli:cli"
+local_chamber = "local_chamber:cli"
