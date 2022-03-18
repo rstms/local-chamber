@@ -4,6 +4,7 @@
 
 import json
 import sys
+import re
 from pprint import pprint
 from subprocess import check_output, run
 
@@ -103,7 +104,6 @@ def test_chamber_list_services(chamber, lines, capsys):
     ret = chamber.list_services()
     assert ret == 0
     lines = lines(capsys)
-    assert len(lines) == 4
     assert lines == [
         "Service",
         "testservice",
@@ -111,6 +111,36 @@ def test_chamber_list_services(chamber, lines, capsys):
         "testservice/sub2",
     ]
     pprint(lines)
+
+def test_chamber_list_services_filtered(chamber, lines, capsys):
+    ret = chamber.list_services(service_filter='testservice/sub1')
+    assert ret == 0
+    lines = lines(capsys)
+    assert lines == [
+        "Service",
+        "testservice/sub1"
+    ]
+    pprint(lines)
+
+def test_chamber_list_services_and_secrets(chamber, lines, capsys):
+    ret = chamber.list_services(include_secrets=True)
+    assert ret == 0
+    lines = lines(capsys)
+    valid_lines = sorted([
+        "Service",
+        'testservice/dynakey',
+        'testservice/key1',
+        'testservice/key_multiword',
+        'testservice/fookey',
+        'testservice/testkey',
+        'testservice/sub1/key2',
+        'testservice/sub1/key1',
+        'testservice/sub2/key2',
+        'testservice/sub2/key1',
+    ])
+    assert lines == valid_lines
+
+
 
 
 def test_chamber_read(chamber, lines, capsys):

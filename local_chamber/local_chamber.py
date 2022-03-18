@@ -2,6 +2,7 @@
 
 import json
 import sys
+import re
 from datetime import datetime
 from os import P_WAIT, environ, execvpe, spawnvpe
 from pathlib import Path
@@ -173,10 +174,10 @@ class LocalChamber:
         output_file.write(out)
         return 0
 
-    def find(self, key, by_value):
+    def find(self, key, by_value, regex=False):
         """Find the given secret across all services"""
         key = key.lower()
-        if by_value:
+        if by_value or regex:
             self.echo("Service\tKey")
         else:
             self.echo("Service")
@@ -185,12 +186,20 @@ class LocalChamber:
         for service in sorted(services):
             for secret in [s for s in service.iterdir() if s.is_file()]:
                 if by_value:
-                    if secret.read_text().strip() == key:
+                    secret_text = secret.read_text().strip()
+                    if regex:
+                        found = re.match(key, secret_text)
+                    else:
+                        found = key == secret_text
+                    if found:
                         self.echo(
                             self._service_name(service) + "\t" + secret.name
                         )
-                elif secret.name == key:
-                    self.echo(self._service_name(service))
+                else:
+                    if regex and re.match(key, secret.name):
+                        self.echo(self._service_name(service) + "\t" + secret.name)
+                    elif key == secret.name:
+                        self.echo(self._service_name(service))
         return 0
 
     def _import(self, service, input_file):
@@ -218,16 +227,23 @@ class LocalChamber:
             self.echo(f"{name}{ltab}1\t\t{mtime}\t{owner}")
         return 0
 
-    def list_services(self, service_filter=None):
+    def list_services(self, *, service_filter=None, include_secrets=False):
         """List services"""
         self.echo("Service")
+        output = []
         services = listdirs(None, self.secrets_dir)
-        for service in sorted(services):
+        for service in services:
             service_name = self._service_name(service)
             if service_filter is None or service_name.startswith(
                 str(service_filter).lower()
             ):
-                self.echo(service_name)
+                if include_secrets:
+                    for secret in sorted(self._secrets(service)):
+                        output.append(f"{service_name}/{secret}")
+                else:
+                    output.append(service_name)
+        for line in sorted(output):
+            self.echo(line)
         return 0
 
     def read(self, service, key):

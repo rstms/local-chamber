@@ -108,3 +108,4 @@ ENV/
 # locals
 .dist
 .timestamp
+notes

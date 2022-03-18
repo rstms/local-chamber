@@ -150,12 +150,13 @@ def export(ctx, output_file, fmt, service):
 
 
 @cli.command()
+@click.option("-r", "--regex", is_flag=True, help='enable regex search (local-only)')
 @click.option("-v", "--by-value", is_flag=True)
 @click.argument("key", type=str, required=True)
 @click.pass_context
-def find(ctx, key, by_value):
+def find(ctx, key, by_value, regex):
     """Find the given secret across all services"""
-    ctx.exit(ctx.obj.find(key, by_value))
+    ctx.exit(ctx.obj.find(key, by_value, regex))
 
 
 @cli.command("import")
@@ -177,10 +178,11 @@ def list(ctx, service):
 
 @cli.command()
 @click.argument("service", type=str, default=None, required=False)
+@click.option("-s", "--secrets", is_flag=True, help='Include secret names in the list')
 @click.pass_context
-def list_services(ctx, service):
+def list_services(ctx, secrets, service):
     """List services"""
-    ctx.exit(ctx.obj.list_services(service))
+    ctx.exit(ctx.obj.list_services(service_filter=service, include_secrets=secrets))
 
 
 @cli.command()
