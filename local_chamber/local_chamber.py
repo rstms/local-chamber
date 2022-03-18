@@ -176,7 +176,6 @@ class LocalChamber:
 
     def find(self, key, by_value, regex=False):
         """Find the given secret across all services"""
-        key = key.lower()
         if by_value or regex:
             self.echo("Service\tKey")
         else:
