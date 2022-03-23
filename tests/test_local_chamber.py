@@ -4,7 +4,6 @@
 
 import json
 import sys
-import re
 from pprint import pprint
 from subprocess import check_output, run
 
@@ -112,35 +111,34 @@ def test_chamber_list_services(chamber, lines, capsys):
     ]
     pprint(lines)
 
+
 def test_chamber_list_services_filtered(chamber, lines, capsys):
-    ret = chamber.list_services(service_filter='testservice/sub1')
+    ret = chamber.list_services(service_filter="testservice/sub1")
     assert ret == 0
     lines = lines(capsys)
-    assert lines == [
-        "Service",
-        "testservice/sub1"
-    ]
+    assert lines == ["Service", "testservice/sub1"]
     pprint(lines)
+
 
 def test_chamber_list_services_and_secrets(chamber, lines, capsys):
     ret = chamber.list_services(include_secrets=True)
     assert ret == 0
     lines = lines(capsys)
-    valid_lines = sorted([
-        "Service",
-        'testservice/dynakey',
-        'testservice/key1',
-        'testservice/key_multiword',
-        'testservice/fookey',
-        'testservice/testkey',
-        'testservice/sub1/key2',
-        'testservice/sub1/key1',
-        'testservice/sub2/key2',
-        'testservice/sub2/key1',
-    ])
+    valid_lines = sorted(
+        [
+            "Service",
+            "testservice/dynakey",
+            "testservice/key1",
+            "testservice/key_multiword",
+            "testservice/fookey",
+            "testservice/testkey",
+            "testservice/sub1/key2",
+            "testservice/sub1/key1",
+            "testservice/sub2/key2",
+            "testservice/sub2/key1",
+        ]
+    )
     assert lines == valid_lines
-
-
 
 
 def test_chamber_read(chamber, lines, capsys):
@@ -202,9 +200,7 @@ def verify_json(shared_datadir):
 
 
 def test_chamber_export_json(chamber, capsys, verify_json, output):
-    ret = chamber.export(
-        fmt="json", service="testservice", output_file=sys.stdout
-    )
+    ret = chamber.export(fmt="json", service="testservice", output_file=sys.stdout)
     assert ret == 0
     assert output(capsys) == verify_json
 
@@ -215,9 +211,7 @@ def verify_yaml(shared_datadir):
 
 
 def test_chamber_export_yaml(chamber, capsys, verify_yaml, output):
-    ret = chamber.export(
-        fmt="yaml", service="testservice", output_file=sys.stdout
-    )
+    ret = chamber.export(fmt="yaml", service="testservice", output_file=sys.stdout)
     assert ret == 0
     output_dict = yaml.load(output(capsys), Loader=Loader)
     reference_dict = yaml.load(verify_yaml, Loader=Loader)
@@ -230,9 +224,7 @@ def verify_csv(shared_datadir):
 
 
 def test_chamber_export_csv(chamber, capsys, verify_csv, output):
-    ret = chamber.export(
-        fmt="csv", service="testservice", output_file=sys.stdout
-    )
+    ret = chamber.export(fmt="csv", service="testservice", output_file=sys.stdout)
     assert ret == 0
     output_csv = output(capsys)
     assert output_csv == verify_csv
@@ -244,9 +236,7 @@ def verify_tsv(shared_datadir):
 
 
 def test_chamber_export_tsv(chamber, capsys, verify_tsv, output):
-    ret = chamber.export(
-        fmt="tsv", service="testservice", output_file=sys.stdout
-    )
+    ret = chamber.export(fmt="tsv", service="testservice", output_file=sys.stdout)
     assert ret == 0
     output_tsv = output(capsys)
     assert output_tsv == verify_tsv
@@ -258,9 +248,7 @@ def verify_dotenv(shared_datadir):
 
 
 def test_chamber_export_dotenv(chamber, capsys, verify_dotenv, output):
-    ret = chamber.export(
-        fmt="dotenv", service="testservice", output_file=sys.stdout
-    )
+    ret = chamber.export(fmt="dotenv", service="testservice", output_file=sys.stdout)
     assert ret == 0
     output_dotenv = output(capsys)
     assert output_dotenv == verify_dotenv
@@ -272,9 +260,7 @@ def verify_tfvars(shared_datadir):
 
 
 def test_chamber_export_tfvars(chamber, capsys, verify_tfvars, output):
-    ret = chamber.export(
-        fmt="tfvars", service="testservice", output_file=sys.stdout
-    )
+    ret = chamber.export(fmt="tfvars", service="testservice", output_file=sys.stdout)
     assert ret == 0
     output_tfvars = output(capsys)
     assert output_tfvars == verify_tfvars

@@ -28,9 +28,7 @@ def test_cli_help(runner):
 
 
 def test_cli_write_read(runner):
-    result = runner.invoke(
-        cli, ["-d", "write", "testservice", "key1", "value1"]
-    )
+    result = runner.invoke(cli, ["-d", "write", "testservice", "key1", "value1"])
     assert result.exit_code == 0, result
     result = runner.invoke(cli, ["read", "testservice", "key1"])
     assert result.exit_code == 0, result
@@ -45,3 +43,18 @@ def test_cli_delete_nonexistent_key(runner):
     result = runner.invoke(cli, ["delete", "test_service", "key_not_present"])
     assert result.exit_code != 0, result
     assert isinstance(result.exception, LocalChamberError)
+
+
+def test_cli_read_quiet(runner):
+    result = runner.invoke(cli, ["-d", "write", "testservice", "key1", "value1"])
+    assert result.exit_code == 0, result
+
+    result = runner.invoke(cli, ["read", "-q", "testservice", "key1"])
+    assert result.exit_code == 0, result
+    lines = result.output.strip().split("\n")
+    assert lines == ["value1"]
+
+    result = runner.invoke(cli, ["read", "--quiet", "testservice", "key1"])
+    assert result.exit_code == 0, result
+    lines = result.output.strip().split("\n")
+    assert lines == ["value1"]

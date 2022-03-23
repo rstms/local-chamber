@@ -37,9 +37,7 @@ FORMATS = ["json", "yaml", "csv", "tsv", "dotenv", "tfvars"]
 @click.pass_context
 def cli(ctx, secrets_dir, debug):
 
-    ctx.obj = LocalChamber(
-        secrets_dir=secrets_dir, debug=debug, echo=click.echo
-    )
+    ctx.obj = LocalChamber(secrets_dir=secrets_dir, debug=debug, echo=click.echo)
 
     def exception_handler(
         exception_type,
@@ -81,12 +79,8 @@ def env(ctx, service):
     ctx.exit(ctx.obj.env(service))
 
 
-@cli.command(
-    context_settings=dict(ignore_unknown_options=True, allow_extra_args=True)
-)
-@click.option(
-    "--pristine", is_flag=True, help="do not inherit parent environment"
-)
+@cli.command(context_settings=dict(ignore_unknown_options=True, allow_extra_args=True))
+@click.option("--pristine", is_flag=True, help="do not inherit parent environment")
 @click.option(
     "--strict",
     is_flag=True,
@@ -139,9 +133,7 @@ def exec(ctx, pristine, strict, strict_value, service):
 
 @cli.command()
 @click.option("-o", "--output_file", type=click.File("w"), default="-")
-@click.option(
-    "-f", "--format", "fmt", type=click.Choice(FORMATS), default="json"
-)
+@click.option("-f", "--format", "fmt", type=click.Choice(FORMATS), default="json")
 @click.argument("service", type=str, required=True)
 @click.pass_context
 def export(ctx, output_file, fmt, service):
@@ -150,7 +142,7 @@ def export(ctx, output_file, fmt, service):
 
 
 @cli.command()
-@click.option("-r", "--regex", is_flag=True, help='enable regex search (local-only)')
+@click.option("-r", "--regex", is_flag=True, help="enable regex search (local-only)")
 @click.option("-v", "--by-value", is_flag=True)
 @click.argument("key", type=str, required=True)
 @click.pass_context
@@ -178,7 +170,7 @@ def list(ctx, service):
 
 @cli.command()
 @click.argument("service", type=str, default=None, required=False)
-@click.option("-s", "--secrets", is_flag=True, help='Include secret names in the list')
+@click.option("-s", "--secrets", is_flag=True, help="Include secret names in the list")
 @click.pass_context
 def list_services(ctx, secrets, service):
     """List services"""
@@ -186,12 +178,13 @@ def list_services(ctx, secrets, service):
 
 
 @cli.command()
+@click.option("-q", "--quiet", is_flag=True, help="output only the secret value")
 @click.argument("service", type=str, required=True)
 @click.argument("key", type=str, required=True)
 @click.pass_context
-def read(ctx, service, key):
+def read(ctx, quiet, service, key):
     """Read a specific secret from the parameter store"""
-    ctx.exit(ctx.obj.read(service, key))
+    ctx.exit(ctx.obj.read(service, key, quiet))
 
 
 @cli.command()

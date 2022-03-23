@@ -1,8 +1,8 @@
 """Main module."""
 
 import json
-import sys
 import re
+import sys
 from datetime import datetime
 from os import P_WAIT, environ, execvpe, spawnvpe
 from pathlib import Path
@@ -37,9 +37,7 @@ def listdirs(dirs, curdir):
         if s.is_dir():
             dirs = listdirs(dirs, s)
         elif s.is_file():
-            if not s.name.startswith(".") and not s.name.lower().startswith(
-                "readme."
-            ):
+            if not s.name.startswith(".") and not s.name.lower().startswith("readme."):
                 dirs.add(curdir)
     return dirs
 
@@ -65,11 +63,7 @@ class LocalChamber:
     def _secrets(self, service):
         secrets = self._secrets_dir(service)
         if secrets.is_dir():
-            ret = {
-                s.name: s.read_text().strip()
-                for s in secrets.iterdir()
-                if s.is_file()
-            }
+            ret = {s.name: s.read_text().strip() for s in secrets.iterdir() if s.is_file()}
         else:
             ret = {}
         return ret
@@ -116,9 +110,7 @@ class LocalChamber:
         # if we have any strict_vars; raise exception if they have not been overwritten  # noqa
         for svar in strict_vars:
             if (svar not in env) or (env[svar] == strict_value):
-                raise LocalChamberError(
-                    f"parent env was expecting {svar}={strict_value}, but was not in store"  # noqa
-                )
+                raise LocalChamberError(f"parent env was expecting {svar}={strict_value}, but was not in store")  # noqa
 
         if EXEC_WAIT:
             return spawnvpe(P_WAIT, cmd[0], cmd, env)
@@ -129,46 +121,19 @@ class LocalChamber:
         """Exports parameters in the specified format"""
         secrets = self._secrets(service.lower())
         if fmt == "json":
-            out = (
-                json.dumps(secrets, separators=[",", ":"], sort_keys=True)
-                + "\n"
-            )
+            out = json.dumps(secrets, separators=[",", ":"], sort_keys=True) + "\n"
         elif fmt == "yaml":
             sorted_secrets = {k: v for k, v in sorted_items(secrets)}
             out = yaml.dump(sorted_secrets)
         elif fmt == "csv":
-            out = (
-                "\n".join(
-                    [
-                        f"{k},{_quote(v,[','])}"
-                        for k, v in sorted_items(secrets)
-                    ]
-                )
-                + "\n"
-            )
+            out = "\n".join([f"{k},{_quote(v,[','])}" for k, v in sorted_items(secrets)]) + "\n"
         elif fmt == "tsv":
             tab = "\t"
-            out = (
-                "\n".join(
-                    [
-                        f"{k}\t{_quote(v,[tab])}"
-                        for k, v in sorted_items(secrets)
-                    ]
-                )
-                + "\n"
-            )
+            out = "\n".join([f"{k}\t{_quote(v,[tab])}" for k, v in sorted_items(secrets)]) + "\n"
         elif fmt == "dotenv":
-            out = (
-                "\n".join(
-                    [f'{k.upper()}="{v}"' for k, v in sorted_items(secrets)]
-                )
-                + "\n"
-            )
+            out = "\n".join([f'{k.upper()}="{v}"' for k, v in sorted_items(secrets)]) + "\n"
         elif fmt == "tfvars":
-            out = (
-                "\n".join([f'{k} = "{v}"' for k, v in sorted_items(secrets)])
-                + "\n"
-            )
+            out = "\n".join([f'{k} = "{v}"' for k, v in sorted_items(secrets)]) + "\n"
         else:
             raise RuntimeError(f"unknown format: {fmt}")
         output_file.write(out)
@@ -191,9 +156,7 @@ class LocalChamber:
                     else:
                         found = key == secret_text
                     if found:
-                        self.echo(
-                            self._service_name(service) + "\t" + secret.name
-                        )
+                        self.echo(self._service_name(service) + "\t" + secret.name)
                 else:
                     if regex and re.match(key, secret.name):
                         self.echo(self._service_name(service) + "\t" + secret.name)
@@ -212,9 +175,7 @@ class LocalChamber:
         """List the secrets set for a service"""
         service = service.lower()
         secrets = {}
-        for secret in [
-            s for s in self._secrets_dir(service).iterdir() if s.is_file()
-        ]:
+        for secret in [s for s in self._secrets_dir(service).iterdir() if s.is_file()]:
             mtime, owner = _stats(secret)
             secrets[secret.name] = (1, mtime, owner)
         namelen = max(len(name) for name in secrets.keys())
@@ -233,9 +194,7 @@ class LocalChamber:
         services = listdirs(None, self.secrets_dir)
         for service in services:
             service_name = self._service_name(service)
-            if service_filter is None or service_name.startswith(
-                str(service_filter).lower()
-            ):
+            if service_filter is None or service_name.startswith(str(service_filter).lower()):
                 if include_secrets:
                     for secret in sorted(self._secrets(service)):
                         output.append(f"{service_name}/{secret}")
@@ -245,18 +204,20 @@ class LocalChamber:
             self.echo(line)
         return 0
 
-    def read(self, service, key):
+    def read(self, service, key, quiet=False):
         """Read a specific secret from the parameter store"""
         secret = self._secrets_dir(service) / key
         try:
             mtime, owner = _stats(secret)
-            out = f"{secret.name}\t{secret.read_text()}\t1\t{mtime}\t{owner}"
+            value = secret.read_text()
+            out = f"{secret.name}\t{value}\t1\t{mtime}\t{owner}"
         except FileNotFoundError as ex:
-            raise LocalChamberError(
-                "Error: Failed to read: secret not found"
-            ) from ex
-        self.echo("Key\tValue\tVersion\tLastModified\tUser")
-        self.echo(out)
+            raise LocalChamberError("Error: Failed to read: secret not found") from ex
+        if quiet:
+            self.echo(value)
+        else:
+            self.echo("Key\tValue\tVersion\tLastModified\tUser")
+            self.echo(out)
 
         return 0
 
