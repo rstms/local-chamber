@@ -346,3 +346,18 @@ def test_chamber_exec(chamber, lines, capfd, testservice_json):
         diff_dict[key.lower()] = value
 
     assert diff_dict == verify_testservice
+
+
+def test_exec_bad_command(chamber):
+    _cmd=['nonexistent_command']
+    with pytest.raises(Exception) as exc_info:
+        chamber._exec( pristine=True, strict_value=None, services=["testservice"], cmd=_cmd)
+    print(f"Exception: {exc_info}")
+
+def test_exec_error_command(chamber, capfd):
+    _cmd = ['bash', '-c', 'ls --nonexistent_option']
+    ret = chamber._exec( pristine=True, strict_value=None, services=["testservice"], cmd=_cmd)
+    assert ret != 0, "expected non-zero return"
+    out = capfd.readouterr()
+    assert out.err
+    print(f"stderr: {out.err}")

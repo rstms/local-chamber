@@ -6,7 +6,7 @@ import sys
 from datetime import datetime
 from os import P_WAIT, environ, execvpe, spawnvpe
 from pathlib import Path
-from subprocess import check_output
+from subprocess import check_output, run
 
 import yaml
 
@@ -113,7 +113,8 @@ class LocalChamber:
                 raise LocalChamberError(f"parent env was expecting {svar}={strict_value}, but was not in store")  # noqa
 
         if EXEC_WAIT:
-            return spawnvpe(P_WAIT, cmd[0], cmd, env)
+            proc = run(cmd, env=env)
+            return proc.returncode
         else:
             execvpe(cmd[0], cmd, env)
 
