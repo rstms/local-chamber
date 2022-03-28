@@ -4,7 +4,7 @@ import json
 import re
 import sys
 from datetime import datetime
-from os import P_WAIT, environ, execvpe, spawnvpe
+from os import environ, execvpe
 from pathlib import Path
 from subprocess import check_output, run
 

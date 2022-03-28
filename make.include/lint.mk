@@ -6,9 +6,9 @@ lint_src = $(project) tests docs
 fmt:
 	isort $(lint_src)
 	black $(lint_src)
+	flake8 --config tox.ini $(lint_src)
 
 # check style, lint with flake8
 lint: fmt
-	flake8 --config tox.ini $(lint_src)
 
 # vim:ft=make
