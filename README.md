@@ -1,14 +1,14 @@
 # local-chamber
 
-![Image](https://img.shields.io/github/license/rstms/local_chamber)
+![Image](https://img.shields.io/github/license/rstms/local-chamber)
 
-![Image](https://img.shields.io/pypi/v/local_chamber.svg)
+![Image](https://img.shields.io/pypi/v/local-chamber.svg)
 
-![Image](https://circleci.com/gh/rstms/local_chamber/tree/master.svg?style=shield)
+![Image](https://circleci.com/gh/rstms/local-chamber/tree/master.svg?style=shield)
 
 ![Image](https://readthedocs.org/projects/local-chamber/badge/?version=latest)
 
-![Image](https://pyup.io/repos/github/rstms/local_chamber/shield.svg)
+![Image](https://pyup.io/repos/github/rstms/local-chamber/shield.svg)
 
 Workalike alias of secrets manager https://github.com/segmentio/chamber substituting local directory for AWS SSM ParameterStore
 
