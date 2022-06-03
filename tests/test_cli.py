@@ -58,3 +58,17 @@ def test_cli_read_quiet(runner):
     assert result.exit_code == 0, result
     lines = result.output.strip().split("\n")
     assert lines == ["value1"]
+
+def test_cli_version(runner):
+    result = runner.invoke(cli, ['version'])
+    assert result.exit_code==0, result
+    assert 'local_chamber' in result.output
+    
+def test_cli_list_services(runner):
+    result = runner.invoke(cli, ['list-services'])
+    assert result.exit_code==0, result
+
+def test_cli_list(runner):
+    result = runner.invoke(cli, ['list', 'testservice'])
+    assert result.exit_code==0, result
+

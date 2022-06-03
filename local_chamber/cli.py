@@ -6,6 +6,7 @@ from pathlib import Path
 import click
 
 from .local_chamber import LocalChamber, LocalChamberError
+from .version import __version__
 
 FORMATS = ["json", "yaml", "csv", "tsv", "dotenv", "tfvars"]
 
@@ -15,7 +16,7 @@ FORMATS = ["json", "yaml", "csv", "tsv", "dotenv", "tfvars"]
 @click.option(
     "-s",
     "--secrets_dir",
-    default=Path(".") / "secrets",
+    default=Path("/etc/local_chamber"),
     type=click.Path(
         exists=True,
         file_okay=False,
@@ -60,6 +61,14 @@ def cli(ctx, secrets_dir, debug):
             sys.exit(1)
 
     sys.excepthook = exception_handler
+
+
+@cli.command()
+@click.pass_context
+def version(ctx):
+    """show the version"""
+    click.echo(f"local_chamber, version {__version__}")
+    ctx.exit(0)
 
 
 @cli.command()
