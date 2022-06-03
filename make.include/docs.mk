@@ -6,7 +6,7 @@ install-docs:
 	pip install -U .[docs]
 
 docs: install-docs clean-docs
-	sphinx-apidoc -o docs/ $(project)
+	sphinx-apidoc -o docs/ $(module)
 	$(MAKE) -C docs html
 	$(browser) docs/_build/html/index.html
 

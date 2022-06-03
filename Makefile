@@ -2,7 +2,7 @@
 
 # remove module from the local python environment
 uninstall: 
-	pip uninstall -yqq $(project)
+	pip uninstall -yqq $(module)
 
 # install to the local environment from the source directory
 install: 

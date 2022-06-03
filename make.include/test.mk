@@ -14,7 +14,7 @@ debug:
 
 # check code coverage quickly with the default Python
 coverage:
-	env TESTING=1 coverage run --source $(project) -m pytest
+	env TESTING=1 coverage run --source $(module) -m pytest
 	coverage report -m
 	coverage html
 	$(browser) htmlcov/index.html

@@ -7,7 +7,7 @@
 
 bumpversion = bumpversion $(1) --allow-dirty --commit --tag --current-version $(version) \
   --search '__version__ = "{current_version}"' --replace '__version__ = "{new_version}"' \
-  $(project)/version.py
+  $(module)/version.py
 
 # bump patch level
 bump-patch: timestamp
@@ -27,8 +27,8 @@ bump-major: timestamp
 # update timestamp if sources have changed
 timestamp: .timestamp 
 .timestamp: $(src) gitclean
-	sed -E -i $(project)/version.py -e "s/(.*__timestamp__.*=).*/\1 \"$$(date --rfc-3339=seconds)\"/"
-	git add $(project)/version.py
+	sed -E -i $(module)/version.py -e "s/(.*__timestamp__.*=).*/\1 \"$$(date --rfc-3339=seconds)\"/"
+	git add $(module)/version.py
 	@touch $@
 	@echo "Timestamp Updated."
 

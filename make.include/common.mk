@@ -1,9 +1,10 @@
 # common - initialization, variables, functions
 
-project = local_chamber
+project = local-chamber
+module = $(shell echo $(project) | tr - _)
 organization = rstms
 branch != git branch | awk '/\*/{print $$2}'
-version != awk <$(project)/version.py -F\" '/^__version__/{print $$2}'
+version != awk <$(module)/version.py -F\" '/^__version__/{print $$2}'
 python_src != find . -name \*.py
 other_src := $(call makefiles) LICENSE README.md
 src := $(python_src) $(other_src)

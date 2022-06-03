@@ -10,7 +10,7 @@ name = "local_chamber"
 authors = [{name = "Matt Krueger", email = "mkrueger@rstms.net"}]
 readme = {file = "README.md", content-type = "text/markdown"}
 license = {file = "LICENSE"}
-keywords = ["local_chamber"]
+keywords = ["local-chamber"]
 classifiers = [
   "Intended Audience :: Developers",
   "Natural Language :: English", 
@@ -45,7 +45,7 @@ docs = [
 ]
 
 [project.urls]
-Home = "https://github.com/rstms/local_chamber"
+Home = "https://github.com/rstms/local-chamber"
 
 [tool.black]
 line-length = 135
