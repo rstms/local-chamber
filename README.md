@@ -10,7 +10,7 @@
 
 ![Image](https://pyup.io/repos/github/rstms/local_chamber/shield.svg)
 
-Local for https://github.com/segmentio/chamber simulating AWS SSM ParameterStore
+Workalike alias of secrets manager https://github.com/segmentio/chamber substituting local directory for AWS SSM ParameterStore
 
 
 * Free software: MIT license
