@@ -35,7 +35,7 @@ BACKENDS = {"file": FileChamber, "envdir": EnvdirChamber, "vault": VaultChamber}
     "-s",
     "--secrets-dir",
     default=Path("/etc/local_chamber"),
-    type=click.Path(exists=True, file_okay=False, writable=True, resolve_path=True, allow_dash=False, path_type=Path),
+    type=click.Path(file_okay=False, writable=True, resolve_path=True, allow_dash=False, path_type=Path),
     envvar="SECRETS_DIR",
     show_envvar=True,
     help="secrets directory",
@@ -52,7 +52,7 @@ BACKENDS = {"file": FileChamber, "envdir": EnvdirChamber, "vault": VaultChamber}
     "-b",
     "--backend",
     envvar="SECRETS_BACKEND",
-    default="envdir",
+    default="vault",
     type=click.Choice(list(BACKENDS.keys())),
     help="selected backend system",
 )
