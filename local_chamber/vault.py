@@ -2,11 +2,12 @@
 
 import hvac
 
+
 class VaultSecrets:
-    def __init__(self, base='chamber'):
-        self.base=base
+    def __init__(self, base="chamber"):
+        self.base = base
         self.client = hvac.Client()
-        self.client.secrets.kv.default_kv_version=2
+        self.client.secrets.kv.default_kv_version = 2
         self.kv = self.client.secrets.kv.v2
 
     def _count(self, char, string):
@@ -15,26 +16,26 @@ class VaultSecrets:
     def secrets(self, path):
         try:
             list_response = self.kv.list_secrets(mount_point=self.base, path=f"/{path.strip('/')}/")
-        except hvac.exceptions.InvalidPath as exc:
+        except hvac.exceptions.InvalidPath:
             ret = []
         else:
-            ret = sorted(list_response['data']['keys'])
+            ret = sorted(list_response["data"]["keys"])
         return ret
 
     def keys(self, path):
-        keys = [key for key in self.secrets(path) if not key.endswith('/')]
+        keys = [key for key in self.secrets(path) if not key.endswith("/")]
         return sorted(keys)
 
     def _services(self, path):
-        ret=[]
+        ret = []
         for key in self.secrets(path):
-            if key.endswith('/'):
+            if key.endswith("/"):
                 subpath = f"/{path.strip('/')}/{key}"
                 sub_services = self._services(subpath)
                 ret.extend(sub_services)
             else:
-                ret.append(path.strip('/')+'/')
-        ret = [r.strip('/') for r in ret]
+                ret.append(path.strip("/") + "/")
+        ret = [r.strip("/") for r in ret]
         ret = [r for r in ret if len(r)]
         return sorted(list(set(ret)))
 
@@ -43,18 +44,18 @@ class VaultSecrets:
         return ret
 
     def delete(self, path):
-        self.kv.delete_metadata_and_all_versions(mount_point=self.base, path='/'+path)
+        self.kv.delete_metadata_and_all_versions(mount_point=self.base, path="/" + path)
 
     def delete_tree(self, path):
         self._walk_tree(path, self.delete)
-        if path != '/':
+        if path != "/":
             self.delete(path)
 
     def _walk_tree(self, path, func):
-        levels={}
+        levels = {}
         for service in self.services(path):
-            level = self._count('/', service)
-            levels.setdefault(level,[])
+            level = self._count("/", service)
+            levels.setdefault(level, [])
             levels[level].append(service)
 
         for level in sorted(levels.keys(), reverse=True):
@@ -63,12 +64,11 @@ class VaultSecrets:
                     func(self._mkpath(path, key))
 
     def _mkpath(self, path, key):
-        if path.strip('/') is None: 
+        if path.strip("/") is None:
             _path = f"/{key}"
         else:
             _path = f"/{path.strip('/')}/{key}"
         return _path
-
 
     def set(self, path, key, value):
         _path = self._mkpath(path, key)
@@ -80,14 +80,14 @@ class VaultSecrets:
         return self.kv.read_secret_version(mount_point=self.base, path=_path)
 
     def get(self, path, key):
-        secret = self._get(path, key)['data']['data']
+        secret = self._get(path, key)["data"]["data"]
         return secret[key]
 
     def get_metadata(self, path, key):
-        return self._get(path, key)['data']['metadata']
+        return self._get(path, key)["data"]["metadata"]
 
     def load(self, path, data):
-        for k,v in data.items():
+        for k, v in data.items():
             if isinstance(v, dict):
                 _path = self._mkpath(path, k)
                 self.load(_path, v)
@@ -95,21 +95,21 @@ class VaultSecrets:
                 self.set(path, k, str(v))
 
     def _collect(self, path):
-        paths = path.strip('/').split('/')
+        paths = path.strip("/").split("/")
         if paths[0] == self.base:
-            paths=paths[1:]
+            paths = paths[1:]
         data = self.data
         for key in paths[:-1]:
             data.setdefault(key, {})
-            data=data[key]
-        _path = '/'.join(paths[:-1])
+            data = data[key]
+        _path = "/".join(paths[:-1])
         key = paths[-1]
-        data[key]=self.get(_path, key)
+        data[key] = self.get(_path, key)
 
     def dump(self, path):
-        self.data={}
+        self.data = {}
         self._walk_tree(path, self._collect)
-        for _path in path.strip('/').split('/'):
-            if _path != '':
+        for _path in path.strip("/").split("/"):
+            if _path != "":
                 self.data = self.data[_path]
         return self.data

@@ -68,19 +68,20 @@ def find(shared_datadir):
         elif find_type == "file":
             lines = _list_keys(json.loads(secrets_file.read_text()), [])
             lines = ["/secrets/" + line for line in lines]
-        elif find_type == 'vault':
-            json_data = check_output('./scripts/testinit export', shell=True).decode().strip()
+        elif find_type == "vault":
+            json_data = check_output("./scripts/testinit export", shell=True).decode().strip()
             lines = _list_keys(json.loads(json_data), [])
             lines = ["/secrets/" + line for line in lines]
         return lines
 
     yield _find
 
-@pytest.fixture(scope='function', autouse=True)
+
+@pytest.fixture(scope="function", autouse=True)
 def init_vault(shared_datadir):
-    datafile = shared_datadir / 'secrets.json'
-    run(f"scripts/testinit clear -p testservice", shell=True)
-    run(f"scripts/testinit clear -p new_service", shell=True)
+    datafile = shared_datadir / "secrets.json"
+    run("scripts/testinit clear -p testservice", shell=True)
+    run("scripts/testinit clear -p new_service", shell=True)
     run(f"scripts/testinit import {str(datafile)}", shell=True)
 
 
@@ -128,7 +129,7 @@ def test_chamber_list_services(chamber_class, config, lines, capsys):
     with chamber_class(config, True, _echo) as chamber:
         ret = chamber.list_services()
         assert ret == 0
-        lines = [line for line in lines(capsys) if line.startswith('testservice')]
+        lines = [line for line in lines(capsys) if line.startswith("testservice")]
         assert lines == [
             "testservice",
             "testservice/sub1",
@@ -152,7 +153,7 @@ def test_chamber_list_services_and_secrets(chamber_class, config, lines, capsys)
     with chamber_class(config, True, _echo) as chamber:
         ret = chamber.list_services(include_secrets=True)
     assert ret == 0
-    lines = [line for line in lines(capsys) if line.startswith('testservice')]
+    lines = [line for line in lines(capsys) if line.startswith("testservice")]
     valid_lines = sorted(
         [
             "testservice/dynakey",

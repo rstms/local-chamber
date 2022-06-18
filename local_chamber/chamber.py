@@ -7,10 +7,11 @@ from datetime import datetime
 from os import environ, execvpe
 from pathlib import Path
 from subprocess import check_output, run
-from .vault import VaultSecrets
 
 import hvac
 import yaml
+
+from .vault import VaultSecrets
 
 
 class ChamberError(Exception):
@@ -213,7 +214,7 @@ class VaultChamber(Chamber):
 
     def _list_services(self):
         """return a list of available services"""
-        services = self.secrets.services('/')
+        services = self.secrets.services("/")
         return services
 
     def _secrets(self, service):
@@ -229,10 +230,10 @@ class VaultChamber(Chamber):
             metadata = self.secrets.get_metadata(service, key)
         except hvac.exceptions.InvalidPath as ex:
             raise ChamberError("Error: secret not found") from ex
-        timestamp = metadata['created_time'].split('.')[0]
+        timestamp = metadata["created_time"].split(".")[0]
         mtime = datetime.fromisoformat(timestamp)
-        owner = 'undefined'
-        version = metadata['version']
+        owner = "undefined"
+        version = metadata["version"]
         return (version, mtime, owner)
 
     def _read(self, service, key):

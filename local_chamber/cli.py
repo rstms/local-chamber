@@ -41,7 +41,7 @@ BACKENDS = {"file": FileChamber, "envdir": EnvdirChamber, "vault": VaultChamber}
     help="secrets directory",
 )
 @click.option("-t", "--token", type=str, envvar="SECRETS_TOKEN")
-@click.option("-r", "--root", type=str, default='chamber', envvar="SECRETS_ROOT")
+@click.option("-r", "--root", type=str, default="chamber", envvar="SECRETS_ROOT")
 @click.option(
     "-d",
     "--debug",
