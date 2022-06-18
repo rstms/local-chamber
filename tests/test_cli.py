@@ -2,10 +2,11 @@
 
 """Tests for `local_chamber` package."""
 
+import click
 import pytest
 from click.testing import CliRunner
 
-from local_chamber import LocalChamberError, __version__, cli, local_chamber
+from local_chamber import ChamberError, __version__, cli
 
 
 @pytest.fixture
@@ -15,7 +16,7 @@ def runner():
 
 def test_cli_version():
     """Test reading version and module name"""
-    assert local_chamber.__name__ == "local_chamber.local_chamber"
+    assert isinstance(cli, click.Group)
     assert __version__
     assert isinstance(__version__, str)
 
@@ -42,7 +43,7 @@ def test_cli_write_read(runner):
 def test_cli_delete_nonexistent_key(runner):
     result = runner.invoke(cli, ["delete", "test_service", "key_not_present"])
     assert result.exit_code != 0, result
-    assert isinstance(result.exception, LocalChamberError)
+    assert isinstance(result.exception, ChamberError)
 
 
 def test_cli_read_quiet(runner):

@@ -1,0 +1,70 @@
+#!/usr/bin/env python3
+
+import click
+import hvac
+import sys
+import json
+import pdb
+from logging import basicConfig, info
+from pprint import pprint
+from local_chamber.vault import VaultSecrets as Secrets
+
+@click.group()
+@click.option('-l', '--log-level', type=str, default='INFO')
+@click.option('-b', '--base', type=str, default='chamber')
+@click.pass_context
+def cli(ctx, log_level, base):
+    basicConfig(stream=sys.stdout, level=log_level.upper())
+    ctx.obj=Secrets(base)
+
+@cli.command()
+@click.argument('path', type=str)
+@click.argument('key', type=str)
+@click.argument('value', type=str)
+@click.pass_context
+def write(ctx, path, key, value):
+    """write secret value at path/key"""
+    secrets=ctx.obj
+    secrets.set(path, key, value)
+
+
+@cli.command()
+@click.argument('path', type=str)
+@click.argument('key', type=str)
+@click.pass_context
+def read(ctx, path, key):
+    """read secret value at path/key"""
+    secrets=ctx.obj
+    click.echo(secrets.get(path, key))
+
+@cli.command()
+@click.option('-p', '--path', type=str, default="/")
+@click.pass_context
+def clear(ctx, path):
+    """delete secrets tree"""
+    secrets=ctx.obj
+    secrets.delete_tree(path)
+
+@cli.command(name='import')
+@click.option('-p', '--path', type=str, default="/")
+@click.argument('input', type=click.File('r'), default='-')
+@click.pass_context
+def _import(ctx, path, input):
+    """read JSON from stdin and set secrets"""
+    secrets=ctx.obj
+    data=json.load(input)
+    secrets.load(path, data)
+
+@cli.command()
+@click.option('-p', '--path', type=str, default='/')
+@click.argument('output', type=click.File('w'), default='-')
+@click.pass_context
+def export(ctx, path, output):
+    """output secrets as json"""
+    secrets=ctx.obj
+    data = secrets.dump(path)
+    json.dump(data, output, indent=2)
+    output.write('\n')
+
+if __name__ == '__main__':
+    sys.exit(cli())

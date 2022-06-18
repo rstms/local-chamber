@@ -5,40 +5,63 @@ from pathlib import Path
 
 import click
 
-from .local_chamber import LocalChamber, LocalChamberError
+from .chamber import ChamberError, EnvdirChamber, FileChamber, VaultChamber
 from .version import __version__
 
 FORMATS = ["json", "yaml", "csv", "tsv", "dotenv", "tfvars"]
+
+BACKENDS = {"file": FileChamber, "envdir": EnvdirChamber, "vault": VaultChamber}
 
 
 @click.group("local_chamber")
 @click.version_option()
 @click.option(
-    "-s",
-    "--secrets_dir",
-    default=Path("/etc/local_chamber"),
+    "-f",
+    "--secrets-file",
+    default=Path(".secrets.json"),
     type=click.Path(
-        exists=True,
-        file_okay=False,
+        file_okay=True,
+        dir_okay=False,
         writable=True,
         resolve_path=True,
         allow_dash=False,
         path_type=Path,
     ),
+    envvar="SECRETS_FILE",
+    show_envvar=True,
+    help="secrets json file",
+)
+@click.option(
+    "-s",
+    "--secrets-dir",
+    default=Path("/etc/local_chamber"),
+    type=click.Path(exists=True, file_okay=False, writable=True, resolve_path=True, allow_dash=False, path_type=Path),
     envvar="SECRETS_DIR",
     show_envvar=True,
     help="secrets directory",
 )
+@click.option("-t", "--token", type=str, envvar="SECRETS_TOKEN")
+@click.option("-r", "--root", type=str, default='chamber', envvar="SECRETS_ROOT")
 @click.option(
     "-d",
     "--debug",
     is_flag=True,
     help="debug mode, output detailed error diagnostics",
 )
+@click.option(
+    "-b",
+    "--backend",
+    envvar="SECRETS_BACKEND",
+    default="envdir",
+    type=click.Choice(list(BACKENDS.keys())),
+    help="selected backend system",
+)
 @click.pass_context
-def cli(ctx, secrets_dir, debug):
+def cli(ctx, secrets_file, secrets_dir, token, root, debug, backend):
 
-    ctx.obj = LocalChamber(secrets_dir=secrets_dir, debug=debug, echo=click.echo)
+    config = {"file": secrets_file, "dir": secrets_dir, "token": token, "root": root, "backend": backend}
+
+    ctx.obj = BACKENDS[backend](config=config, debug=debug, echo=click.echo)
 
     def exception_handler(
         exception_type,
@@ -53,7 +76,7 @@ def cli(ctx, secrets_dir, debug):
                 traceback,
             )
         else:
-            if exception_type is LocalChamberError:
+            if exception_type is ChamberError:
                 fail = exception.args[0]
             else:
                 fail = f"{exception_type.__name__}: {exception}"
@@ -77,7 +100,8 @@ def version(ctx):
 @click.pass_context
 def delete(ctx, service, key):
     """Delete a secret, including all versions"""
-    ctx.exit(ctx.obj.delete(service, key))
+    with ctx.obj as chamber:
+        ctx.exit(chamber.delete(service, key))
 
 
 @cli.command()
@@ -85,7 +109,8 @@ def delete(ctx, service, key):
 @click.pass_context
 def env(ctx, service):
     """Print the secrets from the secrets directory in a format to export as environment variables"""  # noqa
-    ctx.exit(ctx.obj.env(service))
+    with ctx.obj as chamber:
+        ctx.exit(chamber.env(service))
 
 
 @cli.command(context_settings=dict(ignore_unknown_options=True, allow_extra_args=True))
@@ -107,14 +132,14 @@ def exec(ctx, pristine, strict, strict_value, service):
     """Executes a command with secrets loaded into the environment"""
     args = sys.argv.copy()
     if args[1] != "exec":
-        raise LocalChamberError("malformed exec command line")
+        raise ChamberError("malformed exec command line")
     if "--" not in args:
-        raise LocalChamberError("exec requires '--' argument separator")
+        raise ChamberError("exec requires '--' argument separator")
     knife = args.index("--")
     services = args[2:knife]
     cmd = args[knife + 1 :]  # noqa
     if not cmd:
-        raise LocalChamberError("exec requires command list after '--'")
+        raise ChamberError("exec requires command list after '--'")
     if "--pristine" in services:
         pristine = True
         services.remove("--pristine")
@@ -130,14 +155,15 @@ def exec(ctx, pristine, strict, strict_value, service):
     if not strict:
         strict_value = None
 
-    ctx.exit(
-        ctx.obj._exec(
-            pristine=pristine,
-            strict_value=strict_value,
-            services=services,
-            cmd=cmd,
+    with ctx.obj as chamber:
+        ctx.exit(
+            chamber._exec(
+                pristine=pristine,
+                strict_value=strict_value,
+                services=services,
+                cmd=cmd,
+            )
         )
-    )
 
 
 @cli.command()
@@ -147,7 +173,8 @@ def exec(ctx, pristine, strict, strict_value, service):
 @click.pass_context
 def export(ctx, output_file, fmt, service):
     """Exports parameters in the specified format"""
-    ctx.exit(ctx.obj.export(output_file, fmt, service))
+    with ctx.obj as chamber:
+        ctx.exit(chamber.export(output_file, fmt, service))
 
 
 @cli.command()
@@ -157,7 +184,8 @@ def export(ctx, output_file, fmt, service):
 @click.pass_context
 def find(ctx, key, by_value, regex):
     """Find the given secret across all services"""
-    ctx.exit(ctx.obj.find(key, by_value, regex))
+    with ctx.obj as chamber:
+        ctx.exit(chamber.find(key, by_value, regex))
 
 
 @cli.command("import")
@@ -166,7 +194,8 @@ def find(ctx, key, by_value, regex):
 @click.pass_context
 def _import(ctx, service, input_file):
     "import secrets from json or yaml"
-    ctx.exit(ctx.obj._import(service, input_file))
+    with ctx.obj as chamber:
+        ctx.exit(chamber._import(service, input_file))
 
 
 @cli.command()
@@ -174,7 +203,8 @@ def _import(ctx, service, input_file):
 @click.pass_context
 def list(ctx, service):
     """List the secrets set for a service"""
-    ctx.exit(ctx.obj.list(service))
+    with ctx.obj as chamber:
+        ctx.exit(chamber.list(service))
 
 
 @cli.command()
@@ -183,7 +213,8 @@ def list(ctx, service):
 @click.pass_context
 def list_services(ctx, secrets, service):
     """List services"""
-    ctx.exit(ctx.obj.list_services(service_filter=service, include_secrets=secrets))
+    with ctx.obj as chamber:
+        ctx.exit(chamber.list_services(service_filter=service, include_secrets=secrets))
 
 
 @cli.command()
@@ -193,7 +224,8 @@ def list_services(ctx, secrets, service):
 @click.pass_context
 def read(ctx, quiet, service, key):
     """Read a specific secret from the parameter store"""
-    ctx.exit(ctx.obj.read(service, key, quiet))
+    with ctx.obj as chamber:
+        ctx.exit(chamber.read(service, key, quiet))
 
 
 @cli.command()
@@ -203,4 +235,5 @@ def read(ctx, quiet, service, key):
 @click.pass_context
 def write(ctx, service, key, value):
     """write a secret"""
-    ctx.exit(ctx.obj.write(service, key, value))
+    with ctx.obj as chamber:
+        ctx.exit(chamber.write(service, key, value))

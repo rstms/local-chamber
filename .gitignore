@@ -109,3 +109,4 @@ ENV/
 .dist
 .timestamp
 notes
+postactivate
