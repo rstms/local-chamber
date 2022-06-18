@@ -32,7 +32,7 @@ def secrets_file(shared_datadir):
 
 @pytest.fixture
 def config(secrets, secrets_file):
-    return {"dir": secrets, "file": str(secrets_file), 'root': 'test_chamber'}
+    return {"dir": secrets, "file": str(secrets_file)}
 
 
 @pytest.fixture
@@ -69,7 +69,7 @@ def find(shared_datadir):
             lines = _list_keys(json.loads(secrets_file.read_text()), [])
             lines = ["/secrets/" + line for line in lines]
         elif find_type == 'vault':
-            json_data = check_output('./scripts/testinit export -p test_chamber', shell=True).decode().strip()
+            json_data = check_output('./scripts/testinit export', shell=True).decode().strip()
             lines = _list_keys(json.loads(json_data), [])
             lines = ["/secrets/" + line for line in lines]
         return lines
@@ -79,8 +79,9 @@ def find(shared_datadir):
 @pytest.fixture(scope='function', autouse=True)
 def init_vault(shared_datadir):
     datafile = shared_datadir / 'secrets.json'
-    run(f"scripts/testinit clear -p test_chamber", shell=True)
-    run(f"scripts/testinit import -p test_chamber {str(datafile)}", shell=True)
+    run(f"scripts/testinit clear -p testservice", shell=True)
+    run(f"scripts/testinit clear -p new_service", shell=True)
+    run(f"scripts/testinit import {str(datafile)}", shell=True)
 
 
 @pytest.fixture
@@ -127,9 +128,8 @@ def test_chamber_list_services(chamber_class, config, lines, capsys):
     with chamber_class(config, True, _echo) as chamber:
         ret = chamber.list_services()
         assert ret == 0
-        lines = lines(capsys)
+        lines = [line for line in lines(capsys) if line.startswith('testservice')]
         assert lines == [
-            "Service",
             "testservice",
             "testservice/sub1",
             "testservice/sub2",
@@ -152,10 +152,9 @@ def test_chamber_list_services_and_secrets(chamber_class, config, lines, capsys)
     with chamber_class(config, True, _echo) as chamber:
         ret = chamber.list_services(include_secrets=True)
     assert ret == 0
-    lines = lines(capsys)
+    lines = [line for line in lines(capsys) if line.startswith('testservice')]
     valid_lines = sorted(
         [
-            "Service",
             "testservice/dynakey",
             "testservice/key1",
             "testservice/key_multiword",

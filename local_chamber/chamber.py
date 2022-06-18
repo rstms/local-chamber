@@ -196,7 +196,6 @@ class Chamber:
 class VaultChamber(Chamber):
     def __init__(self, config, debug, echo):
         super().__init__(config, debug, echo)
-        self.root = config.get('root', 'default')
 
     def __enter__(self):
         self.secrets = VaultSecrets()
@@ -205,38 +204,29 @@ class VaultChamber(Chamber):
     def __exit__(self, _, ex, tb):
         pass
 
-    def _mkservice(self, service):
-        return f"{self.root}/{service.strip('/')}".strip('/')
-
     def _list(self, service):
         ret = {}
-        for key in self.secrets.keys(self._mkservice(service)):
+        for key in self.secrets.keys(service):
             version, mtime, owner = self._metadata(service, key)
             ret[key] = (version, mtime, owner)
         return ret
 
     def _list_services(self):
         """return a list of available services"""
-        services = self.secrets.services(self.root)
-        ret = []
-        for service in services:
-            assert service.startswith(self.root+'/')
-            ret.append(service[len(self.root)+1:])
-        return ret
+        services = self.secrets.services('/')
+        return services
 
     def _secrets(self, service):
-        _service = self._mkservice(service)
-        keys = self.secrets.keys(_service)
-        return {k: self.secrets.get(_service, k) for k in keys}
+        keys = self.secrets.keys(service)
+        return {k: self.secrets.get(service, k) for k in keys}
 
     def _write(self, service, key, value):
         """write a secret"""
-        self.secrets.set(self._mkservice(service), key, value)
+        self.secrets.set(service, key, value)
 
     def _metadata(self, service, key):
-        _service = self._mkservice(service)
         try:
-            metadata = self.secrets.get_metadata(_service, key)
+            metadata = self.secrets.get_metadata(service, key)
         except hvac.exceptions.InvalidPath as ex:
             raise ChamberError("Error: secret not found") from ex
         timestamp = metadata['created_time'].split('.')[0]
@@ -248,12 +238,12 @@ class VaultChamber(Chamber):
     def _read(self, service, key):
         """return a secret (value, mtime, owner)"""
         _, mtime, owner = self._metadata(service, key)
-        return (self.secrets.get(self._mkservice(service), key), mtime, owner)
+        return (self.secrets.get(service, key), mtime, owner)
 
     def _delete(self, service, key):
         """delete a secret"""
         _, _, _ = self._read(service, key)
-        return self.secrets.delete(f"{self._mkservice(service)}/{key}")
+        return self.secrets.delete(f"{service}/{key}")
 
 
 class EnvdirChamber(Chamber):
