@@ -1,0 +1,94 @@
+#!/bin/bash
+
+# configure or activate virtualenv
+
+set -eo pipefail
+
+# be verbose by default
+VERBOSE=1
+
+fail() {
+  echo >&2 Error: "$@"
+  exit -1
+}
+
+usage() {
+  cat ->&2 <<EOF
+  usage: configure [-q] [-v] [-f] [-n VENV_NAME]
+    q = quiet
+    v = verbose
+    f = force (delete existing virtualenv)
+EOF
+  exit
+}
+
+log() {
+  [ "$VERBOSE" ] && echo '#' "$@" || :
+}
+
+while getopts ":qvfp:n:" opt; do 
+  case ${opt} in 
+    q) unset VERBOSE;;
+    v) export VERBOSE=1;;
+    f) export FORCE=1;;
+    p) export PROJECT=$OPTARG;;
+    n) export VENV=$OPTARG;;
+    :) fail "option requires an argument";;
+    \?) usage;;
+  esac
+done
+shift $(($OPTIND - 1))
+
+GIT_URL=$(git remote get-url origin)
+PROJECT=${PROJECT:-${GIT_URL##*/}}
+echo PROJECT=${PROJECT}
+
+# if VENV unset, use final substring of PROJECT
+export VENV=${VENV:-$(sed <<<$PROJECT -e 's/\([^-]*-\)\{1,\}//')}
+
+echo VENV=${VENV}
+
+running_in_venv() {
+  [ -n "$VIRTUAL_ENV" ]
+}
+
+# run command in interactive subshell (for .bashrc)
+run() {
+  bash -i -c "$1" || true
+}
+
+# https://virtualenvwrapper.readthedocs.io/en/latest/
+virtualenvwrapper_installed() {
+  run 'declare -F' | grep -q 'virtualenvwrapper$'
+}
+
+PYENV="$(which pyenv)"
+PYTHON="$($PYENV which python)"
+PYTHON_VERSION="$($PYTHON -c 'import sys;print(sys.version.split()[0])')"
+
+log Configuring project: $PROJECT
+
+require() {
+  fail "missing requirement: $1"
+}
+
+# check_requirements 
+running_in_venv && fail "cannot configure with virtualenv active"
+virtualenvwrapper_installed || require virtualenvwrapper
+
+log "using python version $PYTHON_VERSION"
+
+if [ "$FORCE" ]; then
+  run "rmvirtualenv $VENV"
+fi
+
+EXISTING_VENVS=$(run workon)
+
+# create virtualenv if not found
+if grep -q $VENV <<<$EXISTING_VENVS; then
+  log "venv '$VENV' already exists"
+else
+  log "creating venv '$VENV'..."
+  run "mkvirtualenv -a $(pwd) -p $PYTHON $VENV"
+fi
+log Activate with "'workon $VENV'"

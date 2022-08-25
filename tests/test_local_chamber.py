@@ -182,6 +182,18 @@ def test_chamber_read(chamber_class, config, lines, capsys):
     assert value == "value1"
 
 
+@pytest.mark.parametrize("chamber_class", [EnvdirChamber, FileChamber, VaultChamber])
+def test_chamber_readsubkey(chamber_class, config, lines, capsys):
+    with chamber_class(config, True, _echo) as chamber:
+        ret = chamber.read("testservice/sub2", "key1")
+    assert ret == 0
+    lines = lines(capsys)
+    assert len(lines) == 2
+    key, value = lines[1].split()[:2]
+    assert key == "key1"
+    assert value == "value21"
+
+
 @pytest.mark.parametrize("chamber_class, find_type", [(EnvdirChamber, "dir"), (FileChamber, "file"), (VaultChamber, "vault")])
 def test_chamber_write(chamber_class, config, find, find_type, lines, capsys):
     before = find(find_type)

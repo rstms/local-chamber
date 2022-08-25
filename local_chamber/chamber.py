@@ -377,7 +377,7 @@ class FileChamber(Chamber):
         """return a secret"""
         s = self.secrets
         for level in service.split("/"):
-            s = self.secrets.get(level, {})
+            s = s.get(level, {})
         return s.get(key, None), None, None
 
     def _delete(self, service, key):
