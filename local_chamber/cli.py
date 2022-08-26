@@ -106,6 +106,18 @@ def delete(ctx, service, key):
 
 
 @cli.command()
+@click.option("-f", "--force", is_flag=True, help="bypass confirmation")
+@click.argument("service", type=str, required=True)
+@click.pass_context
+def prune(ctx, force, service):
+    """Prune a service, including all subkeys"""
+    if not force:
+        click.confirm(f"About to DELETE {service} and all subkeys.", abort=True)
+    with ctx.obj as chamber:
+        ctx.exit(chamber.prune(service))
+
+
+@cli.command()
 @click.argument("service", type=str, required=True)
 @click.pass_context
 def env(ctx, service):

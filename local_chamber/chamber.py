@@ -51,6 +51,17 @@ class Chamber:
         self._delete(service, key)
         return 0
 
+    def prune(self, service):
+        """Prune a service, including all subkeys"""
+        path = service.split("/")
+        plen = len(path)
+        for _service in self._list_services():
+            _path = _service.split("/")
+            if path == _path[:plen]:
+                for _key in self._secrets(_service).keys():
+                    self.delete(_service, _key)
+        return 0
+
     def env(self, service):
         """Print the secrets from the secrets directory in a format to export as environment variables"""  # noqa
         secrets = self._secrets(service.lower())
@@ -387,7 +398,7 @@ class FileChamber(Chamber):
         """delete key from service"""
         s = self.secrets
         for level in service.split("/"):
-            s = self.secrets.get(level, {})
+            s = s.get(level, {})
         try:
             del s[key]
             self.dirty = True

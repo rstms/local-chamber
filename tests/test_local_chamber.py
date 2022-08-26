@@ -77,12 +77,20 @@ def find(shared_datadir, testinit_export):
     yield _find
 
 
+@pytest.fixture(scope="function")
+def reset_vault(shared_datadir, testinit_clear, testinit_import):
+    def _reset_vault():
+        datafile = shared_datadir / "secrets.json"
+        testinit_clear(path="testservice")
+        testinit_clear(path="new_service")
+        testinit_import(path="/", json_string=datafile.read_text())
+
+    return _reset_vault
+
+
 @pytest.fixture(scope="function", autouse=True)
-def init_vault(shared_datadir, testinit_clear, testinit_import):
-    datafile = shared_datadir / "secrets.json"
-    testinit_clear(path="testservice")
-    testinit_clear(path="new_service")
-    testinit_import(path="/", json_string=datafile.read_text())
+def init_vault(reset_vault):
+    reset_vault()
 
 
 @pytest.fixture
@@ -225,6 +233,26 @@ def test_chamber_delete_notfound(chamber_class, config, find, find_type, lines, 
     assert exc_info
     assert exc_info.type == ChamberError
     assert exc_info.value.args[0] == "Error: secret not found"
+
+
+@pytest.mark.parametrize("chamber_class, find_type", [(EnvdirChamber, "dir"), (FileChamber, "file"), (VaultChamber, "vault")])
+def test_chamber_prune_exists(chamber_class, config, find, find_type, lines, capsys):
+    before = find(find_type)
+    with chamber_class(config, True, _echo) as chamber:
+        ret = chamber.prune("testservice/sub1")
+    assert ret == 0
+    after = find(find_type)
+    assert before != after
+
+
+@pytest.mark.parametrize("chamber_class, find_type", [(EnvdirChamber, "dir"), (FileChamber, "file"), (VaultChamber, "vault")])
+def test_chamber_prune_notfound(chamber_class, config, find, find_type, lines, capsys):
+    before = find(find_type)
+    with chamber_class(config, True, _echo) as chamber:
+        ret = chamber.prune("we_are_not_amused")
+    assert ret == 0
+    after = find(find_type)
+    assert before == after
 
 
 @pytest.fixture
