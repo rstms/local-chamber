@@ -7,8 +7,8 @@ import click
 
 from .archive import Backup, Restore
 from .chamber import ChamberError, EnvdirChamber, FileChamber, VaultChamber
-from .version import __version__
 from .shell import _shell_completion
+from .version import __version__
 
 FORMATS = ["json", "yaml", "csv", "tsv", "dotenv", "tfvars"]
 
@@ -298,8 +298,9 @@ def restore(ctx, input, force, patch):
     click.echo(msg)
     ctx.exit(0)
 
+
 @cli.command()
-@click.option('-s', '--shell', type=click.Choice(['bash', 'zsh', '[auto]']), default='[auto]')
+@click.option("-s", "--shell", type=click.Choice(["bash", "zsh", "[auto]"]), default="[auto]")
 def shell_completion(shell):
     """output shell completion code and instructions"""
     _shell_completion(shell)

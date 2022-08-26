@@ -1,7 +1,9 @@
 # shell completion
 
 from os import environ, system
+
 import click
+
 
 def _shell_completion(shell):
     """output shell completion code"""
