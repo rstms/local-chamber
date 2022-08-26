@@ -5,6 +5,7 @@ from pathlib import Path
 
 import click
 
+from .archive import Backup, Restore
 from .chamber import ChamberError, EnvdirChamber, FileChamber, VaultChamber
 from .version import __version__
 
@@ -169,12 +170,14 @@ def exec(ctx, pristine, strict, strict_value, service):
 @cli.command()
 @click.option("-o", "--output_file", type=click.File("w"), default="-")
 @click.option("-f", "--format", "fmt", type=click.Choice(FORMATS), default="json")
+@click.option("-c", "--compact-json", is_flag=True, help="select compact JSON output")
+@click.option("-s/-S", "--sort-keys/--no-sort-keys", is_flag=True, default=True, help="select JSON key sorting")
 @click.argument("service", type=str, required=True)
 @click.pass_context
-def export(ctx, output_file, fmt, service):
+def export(ctx, output_file, fmt, compact_json, sort_keys, service):
     """Exports parameters in the specified format"""
     with ctx.obj as chamber:
-        ctx.exit(chamber.export(output_file, fmt, service))
+        ctx.exit(chamber.export(output_file=output_file, fmt=fmt, compact_json=compact_json, sort_keys=sort_keys, service=service))
 
 
 @cli.command()
@@ -237,3 +240,47 @@ def write(ctx, service, key, value):
     """write a secret"""
     with ctx.obj as chamber:
         ctx.exit(chamber.write(service, key, value))
+
+
+@cli.command()
+@click.option("-f", "--filename", type=click.Path(exists=False, dir_okay=False, path_type=Path))
+@click.argument(
+    "output-path", type=click.Path(exists=True, file_okay=False, writable=True, resolve_path=True, path_type=Path), default="."
+)
+@click.pass_context
+def backup(ctx, filename, output_path):
+    """write secrets data as a gzipped tarball on OUTPUT-PATH
+
+    A timestamp-based filename will be generated.
+    Use the --filename option to specify an output filename.
+    OUTPUT-PATH defaults to the current directory.
+    """
+
+    if filename and filename.suffix != ".tgz":
+        filename = Path(str(filename) + ".tgz")
+
+    with ctx.obj as chamber:
+        msg = Backup(chamber=chamber, output_path=output_path, file_name=filename).write()
+    click.echo(msg)
+    ctx.exit(0)
+
+
+@cli.command()
+@click.option("-p", "--patch", is_flag=True, help="merge restore data into current without deleting existing values")
+@click.option("-f", "--force", is_flag=True, help="bypass confirmation")
+@click.argument("input", type=click.Path(exists=True, dir_okay=False, allow_dash=True, path_type=Path), default="-")
+@click.pass_context
+def restore(ctx, input, force, patch):
+    """restore secrets data from a gzipped tarball file
+
+    Unless --patch is selected, all existing data is purged before restoring.
+
+    """
+
+    if not force:
+        click.confirm("Restore will DESTRUCTIVELY overwrite existing data.", abort=True)
+
+    with ctx.obj as chamber:
+        msg = Restore(chamber=chamber, tarball=input, patch=patch, echo=click.echo).read()
+    click.echo(msg)
+    ctx.exit(0)

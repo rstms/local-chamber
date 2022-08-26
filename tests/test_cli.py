@@ -2,11 +2,19 @@
 
 """Tests for `local_chamber` package."""
 
+import os
+from logging import getLogger
+from subprocess import check_output
+
 import click
 import pytest
 from click.testing import CliRunner
 
 from local_chamber import ChamberError, __version__, cli
+
+logger = getLogger()
+logger.setLevel("INFO")
+info = logger.info
 
 
 @pytest.fixture
@@ -75,3 +83,33 @@ def test_cli_list_services(runner):
 def test_cli_list(runner):
     result = runner.invoke(cli, ["list", "testservice"])
     assert result.exit_code == 0, result
+
+
+def test_cli_backup(runner, shared_datadir):
+    dest = shared_datadir / "tardis"
+    dest.mkdir()
+    result = runner.invoke(cli, ["backup", str(dest)])
+    assert result.exit_code == 0, result
+    info(result.output)
+
+    test1 = check_output(f"ls {str(shared_datadir)}/tardis", shell=True, text=True)
+    assert "_chamber.tgz" in test1
+
+    os.chdir(str(shared_datadir))
+    result = runner.invoke(cli, ["backup"])
+    assert result.exit_code == 0, result
+    info(result.output)
+
+    test2 = check_output(f"ls {str(shared_datadir)}", shell=True, text=True)
+    assert "_chamber.tgz" in test2
+
+    result = runner.invoke(cli, ["backup", "-f" "daleks.tgz", str(dest)])
+    assert result.exit_code == 0, result
+    info(result.output)
+
+    test3 = check_output(f"ls {str(shared_datadir)}/tardis", shell=True, text=True)
+    assert "daleks.tgz" in test3
+
+    checkdir = shared_datadir / "tardis"
+    tbs = [i for i in checkdir.iterdir() if i.is_file() and i.suffix == ".tgz"]
+    assert len(tbs) == 2

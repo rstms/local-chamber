@@ -88,11 +88,14 @@ class Chamber:
         else:
             execvpe(cmd[0], cmd, env)
 
-    def export(self, output_file, fmt, service):
+    def export(self, *, output_file, fmt, service, compact_json=False, sort_keys=True):
         """Exports parameters in the specified format"""
         secrets = self._secrets(service.lower())
         if fmt == "json":
-            out = json.dumps(secrets, separators=[",", ":"], sort_keys=True) + "\n"
+            if compact_json:
+                out = json.dumps(secrets, separators=[",", ":"], sort_keys=sort_keys) + "\n"
+            else:
+                out = json.dumps(secrets, indent=2, sort_keys=sort_keys) + "\n"
         elif fmt == "yaml":
             sorted_secrets = {k: v for k, v in self.sorted_items(secrets)}
             out = yaml.dump(sorted_secrets)

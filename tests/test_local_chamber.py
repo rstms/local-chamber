@@ -60,7 +60,7 @@ def _list_keys(secrets, path=[]):
 
 
 @pytest.fixture
-def find(shared_datadir):
+def find(shared_datadir, testinit_export):
     def _find(find_type, secrets_dir=shared_datadir / "secrets", secrets_file=shared_datadir / "secrets.json"):
         if find_type == "dir":
             output = check_output(["find", str(secrets_dir)])
@@ -69,7 +69,7 @@ def find(shared_datadir):
             lines = _list_keys(json.loads(secrets_file.read_text()), [])
             lines = ["/secrets/" + line for line in lines]
         elif find_type == "vault":
-            json_data = check_output("./scripts/testinit export", shell=True).decode().strip()
+            json_data = testinit_export(path="/").strip()
             lines = _list_keys(json.loads(json_data), [])
             lines = ["/secrets/" + line for line in lines]
         return lines
@@ -78,11 +78,11 @@ def find(shared_datadir):
 
 
 @pytest.fixture(scope="function", autouse=True)
-def init_vault(shared_datadir):
+def init_vault(shared_datadir, testinit_clear, testinit_import):
     datafile = shared_datadir / "secrets.json"
-    run("scripts/testinit clear -p testservice", shell=True)
-    run("scripts/testinit clear -p new_service", shell=True)
-    run(f"scripts/testinit import {str(datafile)}", shell=True)
+    testinit_clear(path="testservice")
+    testinit_clear(path="new_service")
+    testinit_import(path="/", json_string=datafile.read_text())
 
 
 @pytest.fixture
@@ -127,9 +127,11 @@ def errors():
 @pytest.mark.parametrize("chamber_class", [EnvdirChamber, FileChamber, VaultChamber])
 def test_chamber_list_services(chamber_class, config, lines, capsys):
     with chamber_class(config, True, _echo) as chamber:
+        capsys.readouterr()
         ret = chamber.list_services()
         assert ret == 0
-        lines = [line for line in lines(capsys) if line.startswith("testservice")]
+        captured_lines = lines(capsys)
+        lines = [line for line in captured_lines if line.startswith("testservice")]
         assert lines == [
             "testservice",
             "testservice/sub1",
@@ -253,7 +255,7 @@ def verify_json(shared_datadir):
 @pytest.mark.parametrize("chamber_class", [EnvdirChamber, FileChamber, VaultChamber])
 def test_chamber_export_json(chamber_class, config, capsys, verify_json, output):
     with chamber_class(config, True, _echo) as chamber:
-        ret = chamber.export(fmt="json", service="testservice", output_file=sys.stdout)
+        ret = chamber.export(fmt="json", compact_json=True, sort_keys=True, service="testservice", output_file=sys.stdout)
     assert ret == 0
     assert output(capsys) == verify_json
 
