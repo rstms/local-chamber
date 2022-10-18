@@ -232,7 +232,7 @@ def test_chamber_delete_notfound(chamber_class, config, find, find_type, lines, 
             chamber.delete("testservice", "sir_not_appearing_in_this_film")
     assert exc_info
     assert exc_info.type == ChamberError
-    assert exc_info.value.args[0] == "Error: secret not found"
+    assert exc_info.value.args[0] == "Error: secret not found: 'testservice/sir_not_appearing_in_this_film'"
 
 
 @pytest.mark.parametrize("chamber_class, find_type", [(EnvdirChamber, "dir"), (FileChamber, "file"), (VaultChamber, "vault")])
@@ -455,6 +455,15 @@ def test_exec_bad_command(chamber_class, config):
         _cmd = ["nonexistent_command"]
         with pytest.raises(Exception) as exc_info:
             chamber._exec(pristine=True, strict_value=None, services=["testservice"], cmd=_cmd)
+        print(f"Exception: {exc_info}")
+
+
+@pytest.mark.parametrize("chamber_class", [EnvdirChamber, FileChamber, VaultChamber])
+def test_exec_nonexistent_service(chamber_class, config):
+    with chamber_class(config, True, _echo) as chamber:
+        _cmd = ["bash", "-c", "env"]
+        with pytest.raises(Exception) as exc_info:
+            chamber._exec(pristine=True, strict_value=None, services=["nonexistent_service"], cmd=_cmd)
         print(f"Exception: {exc_info}")
 
 

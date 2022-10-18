@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 import click
@@ -191,6 +193,26 @@ def export(ctx, output_file, fmt, compact_json, sort_keys, service):
     """Exports parameters in the specified format"""
     with ctx.obj as chamber:
         ctx.exit(chamber.export(output_file=output_file, fmt=fmt, compact_json=compact_json, sort_keys=sort_keys, service=service))
+
+
+@cli.command()
+@click.option("-e", "--editor", type=str, envvar="VISUAL", default="vi", help="editor pathname")
+@click.argument("service", type=str, required=True)
+@click.pass_context
+def edit(ctx, editor, service):
+    with tempfile.NamedTemporaryFile("a+") as buffer_file:
+        with ctx.obj as chamber:
+            chamber.export(output_file=buffer_file, fmt="json", service=service)
+        buffer_file.seek(0)
+        original_text = buffer_file.read()
+        buffer_file.seek(0)
+        subprocess.run([editor, buffer_file.name])
+        new_text = buffer_file.read()
+        buffer_file.seek(0)
+        if new_text != original_text:
+            with ctx.obj as chamber:
+                ctx.exit(chamber._import(service, buffer_file))
+    ctx.exit(0)
 
 
 @cli.command()

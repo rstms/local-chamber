@@ -4,13 +4,17 @@ options ?= -x --log-cli-level 30
 testfiles ?= $(wildcard tests/test_*.py)
 options := $(if $(test),$(options) -k $(test),$(options))
 
+debugger=--pdb
+options := $(options) --pdbcls=IPython.terminal.debugger:TerminalPdb
+#debugger=--pdb
+
 # run pytest;  example: make options=-svvvx test=cli test 
 test:
 	env TESTING=1 pytest $(options) $(testfiles)
 
 # run pytest, dropping into pdb on exceptions or breakpoints
 debug:
-	${MAKE} options="$(options) --log-cli-level 0 -xvvvs --pdb" test
+	${MAKE} options="$(options) --log-cli-level 0 -xvvvs $(debugger)" test
 
 # check code coverage quickly with the default Python
 coverage:

@@ -1,0 +1,2 @@
+class ChamberError(Exception):
+    pass

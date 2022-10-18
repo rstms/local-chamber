@@ -11,12 +11,8 @@ from subprocess import check_output, run
 import hvac
 import yaml
 
+from .exception import ChamberError
 from .vault import VaultSecrets
-
-
-class ChamberError(Exception):
-    pass
-
 
 EXEC_WAIT = True
 
@@ -32,6 +28,12 @@ class Chamber:
 
     def __exit__(self, _, ex, tb):
         pass
+
+    def _secret_not_found(self, service, key):
+        return f"Error: secret not found: '{service}/{key}'"
+
+    def _service_not_found(self, service):
+        return f"Error: service not found: '{service}'"
 
     def _echo(self, msg):
         return self.echo(msg)
@@ -91,7 +93,7 @@ class Chamber:
         # if we have any strict_vars; raise exception if they have not been overwritten  # noqa
         for svar in strict_vars:
             if (svar not in env) or (env[svar] == strict_value):
-                raise ChamberError(f"parent env was expecting {svar}={strict_value}, but was not in store")  # noqa
+                raise ChamberError(f"Error: parent env was expecting {svar}={strict_value}, but was not in store")  # noqa
 
         if EXEC_WAIT:
             proc = run(cmd, env=env)
@@ -243,7 +245,7 @@ class VaultChamber(Chamber):
         try:
             metadata = self.secrets.get_metadata(service, key)
         except hvac.exceptions.InvalidPath as ex:
-            raise ChamberError("Error: secret not found") from ex
+            raise ChamberError(self._secret_not_found(service, key)) from ex
         timestamp = metadata["created_time"].split(".")[0]
         mtime = datetime.fromisoformat(timestamp)
         owner = "undefined"
@@ -289,12 +291,14 @@ class EnvdirChamber(Chamber):
         owner = check_output(f"id -un {stat.st_uid}", shell=True).decode().strip()
         return mtime, owner
 
-    def _secrets(self, service):
+    def _secrets(self, service, require_exists=True):
         """return dict of secrets in a service"""
         secrets = self._secrets_dir(service)
         if secrets.is_dir():
             ret = {s.name: s.read_text().strip() for s in secrets.iterdir() if s.is_file()}
         else:
+            if require_exists:
+                raise ChamberError(self._service_not_found(service))
             ret = {}
         return ret
 
@@ -323,7 +327,7 @@ class EnvdirChamber(Chamber):
             value = secret.read_text()
             mtime, owner = self._stats(secret)
         except FileNotFoundError as ex:
-            raise ChamberError("Error: Failed to read: secret not found") from ex
+            raise ChamberError(self._secret_not_found(service, key)) from ex
         return value, mtime, owner
 
     def _delete(self, service, key):
@@ -331,7 +335,7 @@ class EnvdirChamber(Chamber):
         try:
             (self.secrets_dir / service.lower() / key.lower()).unlink()
         except FileNotFoundError as ex:
-            raise ChamberError("Error: secret not found") from ex
+            raise ChamberError(self._secret_not_found(service, key)) from ex
 
 
 class FileChamber(Chamber):
@@ -352,10 +356,15 @@ class FileChamber(Chamber):
                 json.dump(self.secrets, ifp)
         self.dirty = False
 
-    def _secrets(self, service):
+    def _secrets(self, service, require_exists=True):
         s = self.secrets
         for level in service.split("/"):
-            s = s.get(level, {})
+            try:
+                s = s[level]
+            except KeyError as exc:
+                if require_exists:
+                    raise ChamberError(self._service_not_found(service)) from exc
+                s = {}
         ret = {k: v for k, v in s.items() if not isinstance(v, dict)}
         return ret
 
@@ -403,4 +412,4 @@ class FileChamber(Chamber):
             del s[key]
             self.dirty = True
         except KeyError as ex:
-            raise ChamberError("Error: secret not found") from ex
+            raise ChamberError(self._secret_not_found(service, key)) from ex

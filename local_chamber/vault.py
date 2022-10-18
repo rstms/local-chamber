@@ -2,6 +2,8 @@
 
 import hvac
 
+from .exception import ChamberError
+
 
 class VaultSecrets:
     def __init__(self, base="chamber"):
@@ -13,10 +15,12 @@ class VaultSecrets:
     def _count(self, char, string):
         return len([c for c in string if c == char])
 
-    def secrets(self, path):
+    def secrets(self, path, require_exists=True):
         try:
             list_response = self.kv.list_secrets(mount_point=self.base, path=f"/{path.strip('/')}/")
-        except hvac.exceptions.InvalidPath:
+        except hvac.exceptions.InvalidPath as exc:
+            if require_exists:
+                raise ChamberError(f"Error: service not found: {path}") from exc
             ret = []
         else:
             ret = sorted(list_response["data"]["keys"])
@@ -28,7 +32,7 @@ class VaultSecrets:
 
     def _services(self, path):
         ret = []
-        for key in self.secrets(path):
+        for key in self.secrets(path, require_exists=False):
             if key.endswith("/"):
                 subpath = f"/{path.strip('/')}/{key}"
                 sub_services = self._services(subpath)

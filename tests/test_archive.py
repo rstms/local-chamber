@@ -31,14 +31,13 @@ def test_archive_init(chamber):
 
 def test_archive_export(chamber):
     with tempfile.NamedTemporaryFile("w+") as buf:
-        chamber.export(output_file=buf, fmt="json", service="testnet", compact_json=False, sort_keys=False)
+        chamber.export(output_file=buf, fmt="json", service="testservice", compact_json=False, sort_keys=False)
         buf.seek(0)
         for line in buf.readlines():
             info(line)
 
 
 def test_backup_restore(chamber, shared_datadir):
-
     reference = {}
     for service in chamber._list_services():
         reference[service] = chamber._secrets(service)
