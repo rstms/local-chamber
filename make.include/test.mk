@@ -1,20 +1,16 @@
 # test - testing with pytest and tox
 
-options ?= -x --log-cli-level 30
 testfiles ?= $(wildcard tests/test_*.py)
+options ?= -x
 options := $(if $(test),$(options) -k $(test),$(options))
-
-debugger=--pdb
-options := $(options) --pdbcls=IPython.terminal.debugger:TerminalPdb
-#debugger=--pdb
 
 # run pytest;  example: make options=-svvvx test=cli test 
 test:
-	env TESTING=1 pytest $(options) $(testfiles)
+	env TESTING=1 pytest $(options) --log-cli-level=ERROR $(testfiles)
 
 # run pytest, dropping into pdb on exceptions or breakpoints
 debug:
-	${MAKE} options="$(options) --log-cli-level 0 -xvvvs $(debugger)" test
+	env TESTING=1 DEBUGGER=1 pytest $(options) -vvs --log-cli-level INFO --pdb $(testfiles)
 
 # check code coverage quickly with the default Python
 coverage:

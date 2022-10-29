@@ -17,6 +17,19 @@ FORMATS = ["json", "yaml", "csv", "tsv", "dotenv", "tfvars"]
 BACKENDS = {"file": FileChamber, "envdir": EnvdirChamber, "vault": VaultChamber}
 
 
+class SysArgs:
+
+    argv = None
+
+    def __init__(self):
+        if self.argv is None:
+            SysArgs.set(sys.argv)
+
+    @classmethod
+    def set(self, args):
+        self.argv = args
+
+
 @click.group("local_chamber")
 @click.version_option()
 @click.option(
@@ -60,12 +73,20 @@ BACKENDS = {"file": FileChamber, "envdir": EnvdirChamber, "vault": VaultChamber}
     type=click.Choice(list(BACKENDS.keys())),
     help="selected backend system",
 )
+@click.option(
+    "-e/-E",
+    "--exists/--if-exists",
+    is_flag=True,
+    default=True,
+    envvar="CHAMBER_REQUIRE_EXISTS",
+    help="(default) exit with error if service or key does not exist",
+)
 @click.pass_context
-def cli(ctx, secrets_file, secrets_dir, token, root, debug, backend):
+def cli(ctx, secrets_file, secrets_dir, token, root, debug, backend, exists):
 
     config = {"file": secrets_file, "dir": secrets_dir, "token": token, "root": root, "backend": backend}
 
-    ctx.obj = BACKENDS[backend](config=config, debug=debug, echo=click.echo)
+    ctx.obj = BACKENDS[backend](config=config, debug=debug, echo=click.echo, require_exists=exists)
 
     def exception_handler(
         exception_type,
@@ -142,26 +163,37 @@ def env(ctx, service):
     default="chamberme",
     help="override the default strict_value",
 )
-@click.argument("service", type=str, required=True)
+@click.option("--child/--exec", is_flag=True, default=True, help="run command as subprocess or exec in current process")
+@click.option("--buffer-output/--no-buffer-output", is_flag=True, default=True, help="buffer output during subprocess run")
+@click.argument("service", type=str, nargs=-1)
 @click.pass_context
-def exec(ctx, pristine, strict, strict_value, service):
-    """Executes a command with secrets loaded into the environment"""
-    args = sys.argv.copy()
-    if args[1] != "exec":
+def exec(ctx, pristine, strict, strict_value, child, buffer_output, service):
+    """execute command with environment vars loaded from one or more services
+    \b
+    chamber exec [OPTIONS] SERVICE [SERVICE...] [--] COMMAND [OPTION ...] [ARG...]]]
+    """
+
+    args = SysArgs().argv
+
+    if "exec" not in args:
         raise ChamberError("malformed exec command line")
+
     if "--" not in args:
         raise ChamberError("exec requires '--' argument separator")
-    knife = args.index("--")
-    services = args[2:knife]
-    cmd = args[knife + 1 :]  # noqa
+
+    i_exec = args.index("exec")
+    i_knife = args.index("--")
+
+    services = args[i_exec + 1 : i_knife]  # noqa: E203
+
+    cmd = args[i_knife + 1 :]  # noqa: E203
+
     if not cmd:
         raise ChamberError("exec requires command list after '--'")
-    if "--pristine" in services:
-        pristine = True
-        services.remove("--pristine")
-    if "--strict" in services:
-        strict = True
-        services.remove("--strict")
+
+    for flag in ["--child", "--exec", "--buffer-output", "--no-buffer-output", "--pristine", "--strict"]:
+        if flag in services:
+            services.remove(flag)
     if "--strict_value" in services:
         i = services.index("--strict_value")
         services.pop(i)
@@ -172,14 +204,17 @@ def exec(ctx, pristine, strict, strict_value, service):
         strict_value = None
 
     with ctx.obj as chamber:
-        ctx.exit(
-            chamber._exec(
-                pristine=pristine,
-                strict_value=strict_value,
-                services=services,
-                cmd=cmd,
-            )
+        chamber._exec(
+            pristine=pristine,
+            strict_value=strict_value,
+            child=child,
+            services=services,
+            buffer_output=buffer_output,
+            cmd=cmd,
         )
+        click.echo(chamber.proc.stdout)
+        click.echo(chamber.proc.stderr, err=True)
+        ctx.exit(chamber.proc.returncode)
 
 
 @cli.command()

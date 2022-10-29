@@ -1,8 +1,11 @@
 import json
+import logging
 
 import pytest
 
 from local_chamber import VaultSecrets
+
+logging.getLogger("urllib3.connectionpool").setLevel("WARNING")
 
 
 @pytest.fixture(autouse=True)
@@ -43,3 +46,19 @@ def testinit_import():
         secrets.load(path, data)
 
     yield _testinit_import
+
+
+@pytest.fixture
+def reset_vault(shared_datadir, testinit_clear, testinit_import):
+    def _reset_vault():
+        datafile = shared_datadir / "secrets.json"
+        testinit_clear(path="testservice")
+        testinit_clear(path="new_service")
+        testinit_import(path="/", json_string=datafile.read_text())
+
+    return _reset_vault
+
+
+@pytest.fixture(scope="function", autouse=True)
+def init_vault(reset_vault):
+    reset_vault()

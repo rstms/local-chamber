@@ -26,8 +26,8 @@ class VaultSecrets:
             ret = sorted(list_response["data"]["keys"])
         return ret
 
-    def keys(self, path):
-        keys = [key for key in self.secrets(path) if not key.endswith("/")]
+    def keys(self, path, require_exists=True):
+        keys = [key for key in self.secrets(path, require_exists=False) if not key.endswith("/")]
         return sorted(keys)
 
     def _services(self, path):
@@ -47,7 +47,7 @@ class VaultSecrets:
         ret = self._services(path)
         return ret
 
-    def delete(self, path):
+    def delete(self, path, require_exists=True):
         self.kv.delete_metadata_and_all_versions(mount_point=self.base, path="/" + path)
 
     def delete_tree(self, path):

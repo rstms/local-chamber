@@ -19,7 +19,7 @@ def config(shared_datadir):
 
 @pytest.fixture
 def chamber(config):
-    with VaultChamber(config, True, info) as c:
+    with VaultChamber(config=config, debug=True, echo=info, require_exists=True) as c:
         yield c
 
 
@@ -57,6 +57,8 @@ def test_backup_restore(chamber, shared_datadir):
     info(repr(after_items))
 
     for service in chamber._list_services():
+        if service == "docker/credentials/secret":
+            breakpoint()
         for key in chamber._secrets(service).keys():
             chamber.delete(service, key)
 

@@ -31,7 +31,7 @@ class Restore:
             restore_dir = Path(temp_dir) / self.tarball.stem
 
             if not restore_dir.is_dir():
-                breakpoint()
+                raise RuntimeError(f"{restore_dir} is not a directory")
 
             files = [f for f in Path(restore_dir).iterdir() if f.is_file()]
             service_count = len(files)
