@@ -163,8 +163,8 @@ def env(ctx, service):
     default="chamberme",
     help="override the default strict_value",
 )
-@click.option("--child/--exec", is_flag=True, default=True, help="run command as subprocess or exec in current process")
-@click.option("--buffer-output/--no-buffer-output", is_flag=True, default=True, help="buffer output during subprocess run")
+@click.option("--child/--exec", is_flag=True, default=False, help="run command as subprocess or exec in current process")
+@click.option("--buffer-output/--no-buffer-output", is_flag=True, default=False, help="buffer output during subprocess run")
 @click.argument("service", type=str, nargs=-1)
 @click.pass_context
 def exec(ctx, pristine, strict, strict_value, child, buffer_output, service):
