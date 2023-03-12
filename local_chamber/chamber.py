@@ -125,7 +125,7 @@ class Chamber:
             self.echo("\n".join(sorted([self._export(k, v) for k, v in secrets.items()])))
         return 0
 
-    def _exec(self, *, services, cmd, pristine=False, strict_value='chamberme', child=True, buffer_output=True):
+    def _exec(self, *, services, cmd, pristine=False, strict_value="chamberme", child=True, buffer_output=True):
         """Executes a command with secrets loaded into the environment"""
         if not cmd:
             raise ChamberError("Error: must specify command to run. See usage: requires at least 1 arg(s), only received 0")  # noqa

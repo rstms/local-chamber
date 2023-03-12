@@ -110,3 +110,4 @@ ENV/
 .timestamp
 notes
 postactivate
+.lint

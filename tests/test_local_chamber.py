@@ -410,13 +410,7 @@ def test_chamber_exec(chamber_class, config, lines, capfd, testservice_json):
     after_cmd = ["env"]
     capfd.readouterr()
     with chamber_class(config=config, debug=True, echo=_echo, require_exists=True) as chamber:
-        ret = chamber._exec(
-            pristine=True,
-            strict_value=None,
-            services=["testservice"],
-            cmd=after_cmd,
-            buffer_output=False
-        )
+        ret = chamber._exec(pristine=True, strict_value=None, services=["testservice"], cmd=after_cmd, buffer_output=False)
     assert ret == 0
     after = lines(capfd)
 

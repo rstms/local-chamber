@@ -69,6 +69,7 @@ class SysArgs:
     "-b",
     "--backend",
     envvar="SECRETS_BACKEND",
+    show_envvar=True,
     default="vault",
     type=click.Choice(list(BACKENDS.keys())),
     help="selected backend system",

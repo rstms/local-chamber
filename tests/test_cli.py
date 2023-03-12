@@ -9,6 +9,7 @@ import pdb
 import sys
 from logging import getLogger
 from subprocess import check_output
+from uuid import uuid4
 
 import click
 import pytest
@@ -285,3 +286,26 @@ def test_cli_backup(runner, shared_datadir):
     checkdir = shared_datadir / "tardis"
     tbs = [i for i in checkdir.iterdir() if i.is_file() and i.suffix == ".tgz"]
     assert len(tbs) == 2
+def test_cli_backend_env(runner, shared_datadir):
+    secrets_file = shared_datadir / "cli_backend_env.json"
+    secrets = {
+        "service1": {"key1": str(uuid4()), "key2": str(uuid4()), "key3": str(uuid4())},
+        "service2": {"key1": str(uuid4()), "key2": str(uuid4()), "key3": str(uuid4())},
+    }
+    secrets_file.write_text(json.dumps(secrets))
+    env = {k: v for k, v in os.environ.items()}
+    env["SECRETS_BACKEND"] = "file"
+    env["SECRETS_FILE"] = str(secrets_file)
+
+    result = runner(["list-services"], env=env)
+    services = result.output.split()
+    assert services[0] == 'Service'
+    services.pop(0)
+    assert set(services) == set(['service1', 'service2'])
+
+    result = runner(['-b', 'file', '-f', str(secrets_file), "list-services"], env=env)
+    services = result.output.split()
+    assert services[0] == 'Service'
+    services.pop(0)
+    assert set(services) == set(['service1', 'service2'])
+
