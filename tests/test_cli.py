@@ -286,6 +286,8 @@ def test_cli_backup(runner, shared_datadir):
     checkdir = shared_datadir / "tardis"
     tbs = [i for i in checkdir.iterdir() if i.is_file() and i.suffix == ".tgz"]
     assert len(tbs) == 2
+
+
 def test_cli_backend_env(runner, shared_datadir):
     secrets_file = shared_datadir / "cli_backend_env.json"
     secrets = {
@@ -299,13 +301,12 @@ def test_cli_backend_env(runner, shared_datadir):
 
     result = runner(["list-services"], env=env)
     services = result.output.split()
-    assert services[0] == 'Service'
+    assert services[0] == "Service"
     services.pop(0)
-    assert set(services) == set(['service1', 'service2'])
+    assert set(services) == set(["service1", "service2"])
 
-    result = runner(['-b', 'file', '-f', str(secrets_file), "list-services"], env=env)
+    result = runner(["-b", "file", "-f", str(secrets_file), "list-services"], env=env)
     services = result.output.split()
-    assert services[0] == 'Service'
+    assert services[0] == "Service"
     services.pop(0)
-    assert set(services) == set(['service1', 'service2'])
-
+    assert set(services) == set(["service1", "service2"])
