@@ -112,9 +112,12 @@ class Chamber:
             plen = len(path)
             for _service in self._list_services():
                 _path = _service.split("/")
-                if path == _path[:plen]:
+                if path[:plen] == _path[:plen]:
                     for _key in self._secrets(_service).keys():
-                        self.delete(_service, _key)
+                        self._delete(_service, _key)
+                    if self._secrets(_service) == {}:
+                        self._delete(_service, None)
+
         return 0
 
     def env(self, service):
@@ -165,13 +168,15 @@ class Chamber:
         else:
             execvpe(cmd[0], cmd, env)
 
-    def export(self, *, output_file, fmt, service, compact_json=False, sort_keys=True):
+    def export(self, *, output_file, fmt, service, compact_json=False, sort_keys=True, tree=False):
         """Exports parameters in the specified format"""
         service = self._verify_service(service)
-        if service:
-            secrets = self._secrets(service)
-        else:
+        if service is None:
             secrets = {}
+        elif tree:
+            secrets = self._tree(service)
+        else:
+            secrets = self._secrets(service)
         if fmt == "json":
             if compact_json:
                 out = json.dumps(secrets, separators=[",", ":"], sort_keys=sort_keys) + "\n"
@@ -193,6 +198,19 @@ class Chamber:
             raise RuntimeError(f"unknown format: {fmt}")
         output_file.write(out)
         return 0
+
+    def _tree(self, service):
+        secrets = {}
+        for _service in self._list_services():
+            if _service.startswith(service):
+                if self._secrets(_service):
+                    s = secrets
+                    subservice = _service[len(service) +1:]
+                    if subservice != "":
+                        for level in subservice.split("/"):
+                            s = s.setdefault(level, {})
+                    s.update(self._secrets(_service))
+        return secrets
 
     def find(self, key, by_value, regex=False):
         """Find the given secret across all services"""
@@ -340,6 +358,8 @@ class VaultChamber(Chamber):
 
     def _delete(self, service, key):
         """delete a secret"""
+        if key is None:
+            return
         _, _, _ = self._read(service, key)
         return self.secrets.delete(f"{service}/{key}")
 
@@ -400,10 +420,6 @@ class EnvdirChamber(Chamber):
 
     def _write(self, service, key, value):
         """write a secret"""
-        if self.force_lower_services:
-            service = service.lower()
-        if self.force_lower_keys:
-            key = key.lower()
         secret = self.secrets_dir / service / key
         secret.parent.mkdir(parents=True, exist_ok=True)
         secret.write_text(value)
@@ -412,7 +428,7 @@ class EnvdirChamber(Chamber):
         """return a secret (value, mtime, owner)"""
         secret = self._secrets_dir(service) / key
         try:
-            value = secret.read_text()
+            value = secret.read_text().strip()
             mtime, owner = self._stats(secret)
         except FileNotFoundError as ex:
             raise ChamberError(self._secret_not_found(service, key)) from ex
@@ -420,14 +436,16 @@ class EnvdirChamber(Chamber):
 
     def _delete(self, service, key):
         """delete key from service"""
-        if self.force_lower_services:
-            service = service.lower()
-        if self.force_lower_keys:
-            key = key.lower()
-        try:
-            (self.secrets_dir / service / key).unlink()
-        except FileNotFoundError as ex:
-            raise ChamberError(self._secret_not_found(service, key)) from ex
+        if key is not None:
+            try:
+                (self.secrets_dir / service / key).unlink()
+            except FileNotFoundError as ex:
+                raise ChamberError(self._secret_not_found(service, key)) from ex
+        service_dir = self.secrets_dir / service
+        if service_dir.is_dir():
+            if len(list(service_dir.iterdir())) == 0:
+                (self.secrets_dir / service).rmdir()
+
 
 
 class FileChamber(Chamber):
@@ -469,7 +487,8 @@ class FileChamber(Chamber):
         services = []
         for k, v in secrets.items():
             if isinstance(v, dict):
-                services.append("/".join(path + [k]))
+                if any([isinstance(i, dict) is False for i in v.values()]):
+                    services.append("/".join(path + [k]))
                 ret = self._slist(v, path + [k])
                 services.extend(ret)
         return list(set(services))
@@ -495,11 +514,19 @@ class FileChamber(Chamber):
 
     def _delete(self, service, key):
         """delete key from service"""
+        if service not in self._list_services():
+            return 
         s = self.secrets
         for level in service.split("/"):
+            parent = s
+            leaf = level
             s = s.get(level, {})
-        try:
-            del s[key]
+        if key is not None:
+            try:
+                del s[key]
+                self.dirty = True
+            except KeyError as ex:
+                raise ChamberError(self._secret_not_found(service, key)) from ex
+        if key is None or parent[leaf] == {}:
+            parent.pop(leaf)
             self.dirty = True
-        except KeyError as ex:
-            raise ChamberError(self._secret_not_found(service, key)) from ex

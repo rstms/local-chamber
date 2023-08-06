@@ -222,13 +222,14 @@ def exec(ctx, pristine, strict, strict_value, child, buffer_output, service):
 @click.option("-o", "--output_file", type=click.File("w"), default="-")
 @click.option("-f", "--format", "fmt", type=click.Choice(FORMATS), default="json")
 @click.option("-c", "--compact-json", is_flag=True, help="select compact JSON output")
+@click.option("-t", "--tree", is_flag=True, help="include all subkeys")
 @click.option("-s/-S", "--sort-keys/--no-sort-keys", is_flag=True, default=True, help="select JSON key sorting")
 @click.argument("service", type=str, required=True)
 @click.pass_context
-def export(ctx, output_file, fmt, compact_json, sort_keys, service):
+def export(ctx, output_file, fmt, compact_json, sort_keys, tree, service):
     """Exports parameters in the specified format"""
     with ctx.obj as chamber:
-        ctx.exit(chamber.export(output_file=output_file, fmt=fmt, compact_json=compact_json, sort_keys=sort_keys, service=service))
+        ctx.exit(chamber.export(output_file=output_file, fmt=fmt, compact_json=compact_json, sort_keys=sort_keys, tree=tree, service=service))
 
 
 @cli.command()

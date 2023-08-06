@@ -208,6 +208,38 @@ def test_chamber_delete_exists(chamber_class, config, find, find_type, lines, ca
     after = find(find_type)
     assert before != after
 
+@pytest.mark.parametrize("chamber_class, find_type", [(VaultChamber, "vault"), (FileChamber, "file"), (EnvdirChamber, "dir")])
+def test_chamber_delete_clears_service(chamber_class, config, find, find_type, lines, capsys, shared_datadir):
+
+    def find_service(service):
+        for s in find(find_type):
+            if s.endswith(service):
+                return True
+        return False
+
+    service='test_delete_clears_service'
+    with chamber_class(config=config, debug=True, echo=_echo, require_exists=True) as chamber:
+        try:
+            chamber.prune(service)
+        except ChamberError as exc:
+            if 'service not found' not in str(exc):
+                raise
+    assert not find_service(service)
+    with chamber_class(config=config, debug=True, echo=_echo, require_exists=True) as chamber:
+        chamber.write(service, 'robin', 'kniggit')
+        chamber.write(service, 'lancelot', 'kniggit')
+    assert find_service(service)
+    with chamber_class(config=config, debug=True, echo=_echo, require_exists=True) as chamber:
+        chamber.delete(service, 'robin')
+    assert find_service(service)
+    with chamber_class(config=config, debug=True, echo=_echo, require_exists=True) as chamber:
+        chamber.delete(service, 'lancelot')
+    assert not find_service(service)
+
+
+
+
+
 
 @pytest.mark.parametrize("chamber_class, find_type", [(EnvdirChamber, "dir"), (FileChamber, "file"), (VaultChamber, "vault")])
 def test_chamber_delete_notfound(chamber_class, config, find, find_type, lines, capsys):
