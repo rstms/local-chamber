@@ -205,7 +205,7 @@ class Chamber:
             if _service.startswith(service):
                 if self._secrets(_service):
                     s = secrets
-                    subservice = _service[len(service) +1:]
+                    subservice = _service[len(service) + 1 :]
                     if subservice != "":
                         for level in subservice.split("/"):
                             s = s.setdefault(level, {})
@@ -447,7 +447,6 @@ class EnvdirChamber(Chamber):
                 (self.secrets_dir / service).rmdir()
 
 
-
 class FileChamber(Chamber):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -515,7 +514,7 @@ class FileChamber(Chamber):
     def _delete(self, service, key):
         """delete key from service"""
         if service not in self._list_services():
-            return 
+            return
         s = self.secrets
         for level in service.split("/"):
             parent = s

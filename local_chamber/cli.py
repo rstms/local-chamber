@@ -229,7 +229,11 @@ def exec(ctx, pristine, strict, strict_value, child, buffer_output, service):
 def export(ctx, output_file, fmt, compact_json, sort_keys, tree, service):
     """Exports parameters in the specified format"""
     with ctx.obj as chamber:
-        ctx.exit(chamber.export(output_file=output_file, fmt=fmt, compact_json=compact_json, sort_keys=sort_keys, tree=tree, service=service))
+        ctx.exit(
+            chamber.export(
+                output_file=output_file, fmt=fmt, compact_json=compact_json, sort_keys=sort_keys, tree=tree, service=service
+            )
+        )
 
 
 @cli.command()

@@ -40,7 +40,7 @@ def test_archive_export(chamber):
 def test_backup_restore(chamber, shared_datadir):
     reference = {}
 
-    info('storing reference')
+    info("storing reference")
 
     for service in chamber._list_services():
         reference[service] = chamber._secrets(service)
@@ -48,7 +48,7 @@ def test_backup_restore(chamber, shared_datadir):
     archive_dir = shared_datadir / "archives"
     archive_dir.mkdir()
     before_items = [i for i in archive_dir.iterdir()]
-    info('backup...')
+    info("backup...")
     b = Backup(chamber=chamber, output_path=archive_dir, file_name=None)
     info(b)
     result = b.write()
